@@ -36,20 +36,23 @@ export function PdfModal({ isOpen, onClose, country, riskAssessmentId }: PdfModa
       
       // Use the actual risk assessment ID
       const result = await pdfMutation.mutateAsync(riskAssessmentId);
+      console.log('PDF generation result:', result);
       setJobId(result.jobId);
     } catch (error) {
+      console.error('PDF generation error:', error);
       // Error is handled by the mutation
     }
   };
 
   const handleDownload = () => {
     if (reportStatus?.url && country) {
-      analytics.pdfDownloadSuccess(country.iso, reportStatus.sizeBytes || 0);
+      analytics.pdfDownloadSuccess(country.iso, reportStatus.size_bytes || 0);
       
       // Create a temporary link to download the file
       const link = document.createElement('a');
       link.href = reportStatus.url;
       link.download = `${country.name}-risk-assessment.pdf`;
+      link.target = '_blank';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
