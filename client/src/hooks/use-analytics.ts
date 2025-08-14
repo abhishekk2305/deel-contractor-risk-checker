@@ -1,10 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
 
 export const useAnalytics = (from?: string, to?: string) => {
   return useQuery({
-    queryKey: ["/api/admin/analytics", from, to],
-    queryFn: () => api.getAnalytics(from, to),
+    queryKey: ["/api/analytics", from, to],
+    queryFn: async () => {
+      const response = await fetch('/api/analytics');
+      if (!response.ok) throw new Error('Failed to fetch analytics');
+      return response.json();
+    },
     staleTime: 2 * 60 * 1000, // 2 minutes
     refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
   });

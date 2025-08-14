@@ -191,7 +191,9 @@ export default function HomePage() {
             <h2 className="text-2xl font-bold text-gray-900">Popular Countries</h2>
             <div className="text-sm text-gray-500 flex items-center">
               <TrendingUp className="w-4 h-4 mr-1" />
-              <span title="Ranked by searches in the last 7 days">Ranked by recent searches</span>
+              <span className="cursor-help" title="Ranked by searches in the last 7 days">
+                Ranked by searches in the last 7 days
+              </span>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -210,7 +212,7 @@ export default function HomePage() {
                         <Badge variant="outline">{country.iso}</Badge>
                         {(country as any).searchCount && (
                           <Badge variant="secondary" className="bg-green-100 text-green-800">
-                            {(country as any).searchCount} searches
+                            {Math.round((country as any).searchCount)} searches
                           </Badge>
                         )}
                       </div>
