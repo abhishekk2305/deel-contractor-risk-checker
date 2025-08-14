@@ -17,9 +17,6 @@ import { createChildLogger } from "./lib/logger";
 const logger = createChildLogger('routes');
 
 export function registerRoutes(app: Express) {
-  // Enable trust proxy for accurate rate limiting
-  app.set('trust proxy', true);
-  
   // Apply metrics middleware globally
   app.use(metricsMiddleware);
   
@@ -28,7 +25,8 @@ export function registerRoutes(app: Express) {
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100, // limit each IP to 100 requests per windowMs
     message: "Too many requests from this IP, please try again later.",
-    trustProxy: true
+    standardHeaders: true,
+    legacyHeaders: false
   });
 
   app.use("/api", limiter);
@@ -335,6 +333,53 @@ export function registerRoutes(app: Express) {
     } catch (error) {
       logger.error({ error }, 'Failed to get PDF job status');
       res.status(500).json({ error: "Failed to get job status" });
+    }
+  });
+
+  // Compliance rules endpoint (for admin CMS)
+  app.get("/api/compliance-rules", async (req, res) => {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+
+      const offset = (page - 1) * limit;
+      const results = await db
+        .select({
+          id: complianceRules.id,
+          countryId: complianceRules.countryId,
+          ruleType: complianceRules.ruleType,
+          description: complianceRules.description,
+          severity: complianceRules.severity,
+          status: complianceRules.status,
+          version: complianceRules.version,
+          effectiveFrom: complianceRules.effectiveFrom,
+          updatedAt: complianceRules.updatedAt,
+          country: {
+            name: countries.name,
+            iso: countries.iso
+          }
+        })
+        .from(complianceRules)
+        .leftJoin(countries, eq(complianceRules.countryId, countries.id))
+        .limit(limit)
+        .offset(offset)
+        .orderBy(desc(complianceRules.updatedAt));
+
+      // Get total count
+      const [{ count: total }] = await db.select({ count: count() }).from(complianceRules);
+
+      res.json({
+        rules: results,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit)
+        }
+      });
+    } catch (error) {
+      logger.error({ error }, "Error fetching compliance rules");
+      res.status(500).json({ error: "Failed to fetch compliance rules" });
     }
   });
 

@@ -8,7 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/home";
 import SearchPage from "@/pages/search";
 import CountryDetail from "@/pages/country-detail";
-import AdminRules from "@/pages/admin-rules";
+import AdminRules from "@/pages/admin-rules-working";
 import Analytics from "@/pages/analytics";
 import NotFound from "@/pages/not-found";
 
