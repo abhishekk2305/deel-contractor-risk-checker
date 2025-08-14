@@ -121,7 +121,7 @@ export function registerRoutes(app: Express) {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
-      const search = req.query.search as string || "";
+      const search = (req.query.search || req.query.query) as string || "";
 
       // Track search event
       await analyticsService.trackEvent({
@@ -134,8 +134,8 @@ export function registerRoutes(app: Express) {
       if (search) {
         query = query.where(
           or(
-            ilike(countries.name, `%${search}%`),
-            ilike(countries.iso, `%${search}%`)
+            sql`unaccent(${countries.name}) ILIKE unaccent(${`%${search}%`})`,
+            ilike(countries.iso, `%${search.toUpperCase()}%`)
           )
         );
       }
@@ -148,8 +148,8 @@ export function registerRoutes(app: Express) {
       if (search) {
         totalQuery = totalQuery.where(
           or(
-            ilike(countries.name, `%${search}%`),
-            ilike(countries.iso, `%${search}%`)
+            sql`unaccent(${countries.name}) ILIKE unaccent(${`%${search}%`})`,
+            ilike(countries.iso, `%${search.toUpperCase()}%`)
           )
         );
       }
@@ -277,9 +277,28 @@ export function registerRoutes(app: Express) {
         }
       });
 
+      // Add provider information to the response
+      const responseResult = {
+        ...result,
+        providerInfo: result.providerInfo || {
+          sanctions: {
+            source: "opensanctions",
+            hits_count: result.breakdown?.sanctionsHits || 0,
+            top_matches: result.breakdown?.sanctionsMatches || [],
+            lists: result.breakdown?.sanctionsLists || []
+          },
+          media: {
+            source: "mock",
+            mentions_count: 0,
+            keywords: []
+          }
+        },
+        partial_sources: result.partialSources || []
+      };
+
       res.json({
         success: true,
-        result: result
+        result: responseResult
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -297,8 +316,8 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  // PDF generation endpoints
-  app.post("/api/pdf/generate", async (req, res) => {
+  // PDF generation endpoints - standardized to /api/pdf-report
+  app.post("/api/pdf-report", async (req, res) => {
     try {
       const { riskAssessmentId } = req.body;
 
@@ -355,9 +374,8 @@ export function registerRoutes(app: Express) {
         }
       });
 
-      res.json({
-        success: true,
-        jobId,
+      res.status(202).json({
+        job_id: jobId,
         message: "PDF generation started"
       });
     } catch (error) {
@@ -366,11 +384,11 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  // Get PDF job status
-  app.get("/api/pdf/status/:jobId", async (req, res) => {
+  // Get PDF job status - standardized to /api/pdf-report/:id
+  app.get("/api/pdf-report/:id", async (req, res) => {
     try {
-      const { jobId } = req.params;
-      const status = await pdfService.getJobStatus(jobId);
+      const { id } = req.params;
+      const status = await pdfService.getJobStatus(id);
 
       if (!status) {
         return res.status(404).json({ error: "Job not found" });

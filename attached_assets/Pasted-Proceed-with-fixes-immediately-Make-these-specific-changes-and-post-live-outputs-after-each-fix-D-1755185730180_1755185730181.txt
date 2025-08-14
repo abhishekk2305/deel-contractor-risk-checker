@@ -1,0 +1,65 @@
+Proceed with fixes immediately. Make these specific changes and post live outputs after each fix.
+
+Diacritic search for Côte d’Ivoire
+
+Backend: make search case- and diacritic-insensitive on name and ISO. Use unaccent/ILIKE or equivalent:
+
+normalize both query and name in SQL (unaccent(name) ILIKE unaccent('%{q}%')).
+
+Verify with:
+
+GET /api/countries?query=Côte
+
+GET /api/countries?query=Cote
+
+Both must return Côte d’Ivoire.
+
+Post the exact SQL used and both JSON responses.
+
+Risk-check response must include sanctions fields
+
+Response contract addition under result:
+
+providerInfo: { sanctions: { source: "opensanctions", hits_count, top_matches:[{name, score, datasets}], lists:[...] }, media: { source:"newsapi", mentions_count, keywords:[...] } }
+
+partial_sources: [] when all calls succeed; include ["sanctions"] if OpenSanctions times out.
+
+Ensure the OpenSanctions call is actually used to populate hits_count and top_matches.
+
+Verify with a live name (e.g., “Vladimir Putin”) and post full JSON.
+
+PDF route normalization
+
+Standardize to POST /api/pdf-report for job creation; GET /api/pdf-report/:id for polling.
+
+The create endpoint must return JSON { job_id } 202; the poll endpoint returns { url, size_bytes } when ready.
+
+PDF must include two-decimal formatting, human date, ruleset_version, and “Sanctions source: OpenSanctions (live)”.
+
+Post:
+
+202 creation JSON
+
+Poll response with pre-signed URL
+
+Attach the generated PDF in /verification and confirm download works.
+
+Also:
+
+Countries total must remain ~249–250 after changes; re-post GET /api/countries?page=1&page_size=50 with total.
+
+Update the “How scoring works” modal and PDF footer to show active providers and weights.
+
+When done, paste a single block of live evidence:
+
+/health JSON
+
+Countries diacritic search JSON (both “Côte” and “Cote”)
+
+Risk-check full JSON showing providerInfo.sanctions.hits_count and top_matches
+
+PDF create 202 + poll response and the working PDF link
+
+Admin versions response and the newest audit_logs rows
+
+If any step fails, paste the exact error and the code diff you applied so we can correct it quickly.
