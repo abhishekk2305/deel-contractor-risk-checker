@@ -187,13 +187,14 @@ export function registerRoutes(app: Express) {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-      // Get popular countries from analytics events (country views)
+      // Get popular countries from analytics events (country views and risk checks)
       const popularCountriesQuery = `
         SELECT c.*, COUNT(al.id) as search_count 
         FROM countries c 
-        LEFT JOIN audit_logs al ON c.iso = al.metadata->>'iso' 
-          AND al.event = 'country_view' 
-          AND al.created_at >= $1
+        LEFT JOIN audit_logs al ON (
+          (c.iso = al.metadata->>'countryIso' AND al.event = 'risk_check_success') OR
+          (c.iso = al.metadata->>'iso' AND al.event = 'country_view')
+        ) AND al.created_at >= $1
         GROUP BY c.id 
         ORDER BY search_count DESC, c.name ASC 
         LIMIT $2
@@ -731,5 +732,91 @@ export function registerRoutes(app: Express) {
   });
 
   const httpServer = createServer(app);
+  // Admin compliance rules endpoints
+  app.get("/api/admin/compliance-rules", async (req, res) => {
+    try {
+      // Mock compliance rules data
+      const rules = [
+        {
+          id: "rule-1",
+          title: "US Employment Law Compliance",
+          description: "Ensures contractor agreements comply with US federal employment regulations",
+          version: 1,
+          status: "published",
+          createdAt: "2024-12-01T00:00:00Z",
+          updatedAt: "2024-12-01T00:00:00Z"
+        },
+        {
+          id: "rule-2", 
+          title: "GDPR Data Protection",
+          description: "Mandatory data protection compliance for EU contractors",
+          version: 2,
+          status: "published",
+          createdAt: "2024-11-15T00:00:00Z",
+          updatedAt: "2024-12-10T00:00:00Z"
+        },
+        {
+          id: "rule-3",
+          title: "Sanctions Screening Protocol",
+          description: "Enhanced sanctions and PEP screening requirements",
+          version: 1,
+          status: "draft",
+          createdAt: "2024-12-14T00:00:00Z",
+          updatedAt: "2024-12-14T00:00:00Z"
+        }
+      ];
+      res.json(rules);
+    } catch (error) {
+      logger.error({ error }, "Error fetching compliance rules");
+      res.status(500).json({ error: "Failed to fetch compliance rules" });
+    }
+  });
+
+  app.post("/api/admin/compliance-rules", async (req, res) => {
+    try {
+      const { title, description } = req.body;
+      
+      if (!title || !description) {
+        return res.status(400).json({ error: "Title and description are required" });
+      }
+
+      // Mock rule creation
+      const newRule = {
+        id: `rule-${Date.now()}`,
+        title,
+        description,
+        version: 1,
+        status: "draft",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      await analyticsService.trackEvent("rule_create", { ruleId: newRule.id, title });
+      res.status(201).json(newRule);
+    } catch (error) {
+      logger.error({ error }, "Error creating compliance rule");
+      res.status(500).json({ error: "Failed to create compliance rule" });
+    }
+  });
+
+  app.post("/api/admin/compliance-rules/:id/publish", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Mock publishing logic
+      const publishedRule = {
+        id,
+        status: "published",
+        publishedAt: new Date().toISOString()
+      };
+
+      await analyticsService.trackEvent("rule_publish", { ruleId: id });
+      res.json(publishedRule);
+    } catch (error) {
+      logger.error({ error }, "Error publishing compliance rule");
+      res.status(500).json({ error: "Failed to publish compliance rule" });
+    }
+  });
+
   return httpServer;
 }

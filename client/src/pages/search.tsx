@@ -56,10 +56,10 @@ export default function SearchPage() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
+  const [showScoringModal, setShowScoringModal] = useState(false);
   const [showRiskForm, setShowRiskForm] = useState(false);
   const [riskResult, setRiskResult] = useState<RiskAssessment | null>(null);
   const [showPdfModal, setShowPdfModal] = useState(false);
-  const [showScoringModal, setShowScoringModal] = useState(false);
   
   // Risk assessment form state
   const [contractorName, setContractorName] = useState('');

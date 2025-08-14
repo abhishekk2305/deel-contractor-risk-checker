@@ -1,0 +1,159 @@
+Stop summarizing. My preview still shows the same errors. Do not reply until each checklist item below is fixed in the actual UI I’m viewing. Every item must include BOTH a screenshot from my preview URL and the exact API JSON used. No claims without evidence.
+
+Blocking issues to fix with proofs
+
+A) Home/Dashboard
+
+Popular Countries
+
+Implement: Top 6 by searches in the last 7 days (fallback to all-time if <6).
+
+Show count badges. Tooltip: “Ranked by searches in the last 7 days.”
+
+Post:
+
+API JSON you used (endpoint + payload)
+
+Screenshot of the home card with ranks and counts
+
+My acceptance: the list on my preview matches your counts (I will refresh and compare).
+
+Counters/Charts
+
+Populate real numbers (Searches, Risk Checks, PDFs, Rules Published).
+
+Activity chart must show today’s events.
+
+Post: /api/analytics JSON + dashboard screenshot.
+
+B) Navigation and duplication
+3) Remove duplicates
+
+Risk Assessment, Analytics, Admin should live in one global nav only. Remove extra copies from country pages.
+
+Post: screenshot of country page showing no duplicate sections and a clean breadcrumb.
+
+C) Admin
+4) 404 fixes
+
+/admin and its tabs must not 404. Build proper routes and empty states.
+
+Post: videos or screenshots creating, editing, publishing a rule; version history visible; no 404.
+
+Settings content
+
+Add diagnostics: build SHA, ruleset version, DB/Redis/S3/providers with a “Run diagnostics” button (calls /health).
+
+Post: screenshot after “Run diagnostics” with green checks.
+
+D) Risk Assessment clarity
+6) “How Scoring Works”
+
+Modal must show exact formula, weights, thresholds, and active sources (“OpenSanctions (live)”, “NewsAPI (live)”).
+
+Post: modal screenshot + the same copy rendered in PDF footer.
+
+Deterministic test buttons
+
+Add “Use test data” with two presets:
+
+John Smith (US) → low risk, sanctions hits_count ≈ 0
+
+Vladimir Putin (RU) → sanctions hits_count > 100, pep=true
+
+Post: both full JSON responses and result screenshots.
+
+E) PDF pipeline (your biggest blocker)
+8) End-to-end from the UI
+
+From the result page, Generate PDF → show progress → Download opens a file.
+
+Backend:
+
+POST /api/pdf-report → 202 {job_id}
+
+GET /api/pdf-report/:id → 200 {url,size_bytes,expires_at}
+
+Post:
+
+The actual 202 JSON and poll JSON for the one you trigger in the UI
+
+The pre‑signed URL that downloads a PDF now
+
+Save the same file to /verification/sample.pdf and link it
+
+S3/IAM evidence
+
+Paste bucket region and masked envs exist; paste the IAM policy (s3:PutObject/GetObject on arn:aws:s3:::BUCKET/*).
+
+Paste a successful upload log line for this exact job_id.
+
+F) Countries
+10) Totals and diacritics
+
+Keep total ≈ 250. Prove “Côte” and “Cote” work in both UI and API.
+
+Post: API JSON and UI screenshots.
+
+G) Analytics clarity
+11) Make readable
+
+Rename cards/axes for clarity; add 7/30/90-day selector; reflect your latest interactions.
+
+Post: screenshot and the /api/analytics JSON used.
+
+H) Reliability and security
+12) No runtime overlays
+
+Fix all React runtime errors; add error boundaries.
+
+Post: browser console screenshot (no red errors) while running the full flow.
+
+Headers
+
+Paste response headers from an admin API request (Helmet/CSP/CORS and rate-limit headers visible).
+
+Observability
+
+/metrics snippet showing route-level counters/histograms.
+
+Sentry test event ID.
+
+I) Final acceptance pack
+15) /verification folder updated with:
+
+README explaining popular-country logic, scoring formula, sources
+
+seed-countries.sql
+
+curl scripts for risk-check + pdf-report
+
+a working sample.pdf
+
+a 2–3 minute GIF of search → risk check (both presets) → PDF → admin publish → analytics increment
+
+J) Single final proof message
+
+After fixes, post ONE message with:
+
+My preview URL
+
+/health JSON
+
+Popular countries API JSON + matching home screenshot
+
+Two risk-check JSONs (John Smith, Vladimir Putin) + screenshots
+
+PDF 202 + poll JSON + working pre‑signed URL + /verification/sample.pdf
+
+Admin non-404 screenshots + version history
+
+Analytics API JSON + dashboard screenshot
+
+Security headers snippet
+
+/metrics snippet
+
+Link to /verification
+
+Do not claim completion unless my preview shows these changes. If any step fails, paste the error and the exact code diff you applied. I will not proceed to deploy until every acceptance check passes on my end.

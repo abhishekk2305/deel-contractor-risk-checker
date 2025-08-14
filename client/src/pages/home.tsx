@@ -200,8 +200,20 @@ export default function HomePage() {
                 <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold">{country.name}</h3>
-                      <Badge variant="outline">{country.iso}</Badge>
+                      <div className="flex items-center gap-2">
+                        <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
+                          #{index + 1}
+                        </span>
+                        <h3 className="text-lg font-semibold">{country.name}</h3>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{country.iso}</Badge>
+                        {(country as any).searchCount && (
+                          <Badge variant="secondary" className="bg-green-100 text-green-800">
+                            {(country as any).searchCount} searches
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center text-sm text-gray-500">
                       <TrendingUp className="w-4 h-4 mr-1" />

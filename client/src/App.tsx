@@ -9,6 +9,7 @@ import Home from "@/pages/home";
 import SearchPage from "@/pages/search";
 import CountryDetail from "@/pages/country-detail";
 import AdminRules from "@/pages/admin-rules-working";
+import AdminPage from "@/pages/admin";
 import Analytics from "@/pages/analytics";
 import NotFound from "@/pages/not-found";
 
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/search" component={SearchPage} />
       <Route path="/country/:iso" component={CountryDetail} />
       <Route path="/admin-rules" component={AdminRules} />
+      <Route path="/admin" component={AdminPage} />
       <Route path="/analytics" component={Analytics} />
       <Route component={NotFound} />
     </Switch>
