@@ -1,0 +1,102 @@
+A. Data and schema
+
+Print schema: countries, compliance_rules, ruleset_versions, contractors, risk_scores, pdf_reports, audit_logs, subscriptions.
+
+Row counts: show totals for each table; at least 30 countries seeded; ≥5 countries with published ruleset_versions.
+
+Sample rows: 10 countries with name, iso, last_updated.
+
+B. APIs and contracts
+
+Health: GET /health returns ok + build SHA + DB/Redis/S3 checks.
+
+Countries: GET /api/countries?query=an&page=1&page_size=10&sort=updated_at
+
+Evidence: JSON with items, total, pagination.
+
+Risk check: POST /api/risk-check with sample body
+
+Evidence: 200 JSON including score, tier, top_risks, recommendations[3+], penalty_range, partial_sources (empty or names), ruleset_version, created_at.
+
+Idempotency: resend with same Idempotency-Key → identical response; different key → new record.
+
+Rate limit: exceed threshold → 429 with Retry-After.
+
+PDF: POST /api/pdf-report → 202 job_id, then poll GET /api/pdf-report/:id → url + size_bytes. Download works.
+
+Admin rules:
+
+Create draft → Update → Publish → new ruleset_versions row.
+
+GET /api/admin/rules/versions?country=IN returns history.
+
+C. Rules engine and providers
+
+Provider mode: log which providers are active (ComplyAdvantage, NewsAPI). Redact keys.
+
+Partial sources: simulate timeout in one adapter; risk-check response contains partial_sources; UI shows amber banner.
+
+Scoring transparency: “How scoring works” modal shows weights, thresholds, sources, ruleset_version; same details included in PDF footer.
+
+D. Frontend flows (screenshots/video)
+
+Search flow: query → results populated; empty state and reset filters verified.
+
+Country detail: risk badge, top risks, recommendations, penalty range, last_updated.
+
+Risk check: results card populated; partial banner scenario demo.
+
+PDF: click → toast → file downloads; open PDF shows correct branding and fields.
+
+Admin CMS: list → edit → publish → version diff visible; audit log entry recorded.
+
+Analytics dashboard reflects increments after actions.
+
+E. UI polish and accessibility
+
+Risk Distribution numbers: exactly 2 decimals (locale-aware). Ask Replit to paste the formatter utility they used and show before/after screenshots.
+
+Dates formatted “Aug 14, 2025.”
+
+Badges have aria-labels “Risk level: High/Medium/Low.”
+
+Keyboard navigation works on modal; focus trap; aria-live on “Generating PDF…”
+
+F. Security and headers
+
+Admin routes require JWT; unauthenticated call returns 401/403.
+
+Helmet/CSP/CORS headers: paste sample response headers.
+
+Logs: no PII (emails/IDs) in application logs; confirm masking.
+
+Audit logs: show last 5 entries (actor, action, entity, diff summary).
+
+G. Observability and analytics
+
+Sentry: throw a test error; share event ID visible in Sentry.
+
+/metrics: expose Prometheus counters/histograms; paste a sample.
+
+Analytics: show Plausible events for search_submit, country_view, risk_check_success, pdf_generate, pdf_download_success, admin_rule_publish.
+
+H. Runbook and envs
+
+Provide /verification folder with:
+
+curl scripts + sample responses
+
+seed SQL/migrations
+
+one PDF sample
+
+screenshots/gif of full flow
+
+list of required env vars per service (secrets masked)
+
+rollback/deploy checklist (build, set envs, health checks, smoke tests)
+
+Paste this message to Replit
+“Before deploy, please complete the acceptance checklist A–H above and post evidence for each step (JSON outputs, headers, screenshots, PDF file, logs, links to /verification assets). Also confirm the number formatter now shows two decimals on Risk Distribution and that the same formatting is used in the PDF and analytics cards. When all items are green, proceed to set up Deploys for the 4 Repls with Always On and provide the production verification steps.”
+
+If any item fails, stop and have it fix that specific step before proceeding.
