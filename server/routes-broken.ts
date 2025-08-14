@@ -22,6 +22,12 @@ export function registerRoutes(app: Express) {
     message: "Too many requests from this IP, please try again later."
   });
 
+  const riskCheckLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 10, // limit each IP to 10 risk checks per minute
+    message: "Too many risk checks, please wait before retrying."
+  });
+
   app.use("/api", limiter);
 
   // Health check endpoint
@@ -55,23 +61,26 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  // Countries API - simplified to match actual schema
+  // Countries API
   app.get("/api/countries", async (req, res) => {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
       const search = req.query.search as string || "";
+      const riskLevel = req.query.riskLevel as string;
+      const region = req.query.region as string;
 
       // Track search event
       await analyticsService.trackEvent({
         event: 'search_submit',
-        metadata: { search, page }
+        metadata: { search, riskLevel, region, page }
       });
 
       let query = db.select().from(countries);
+      let conditions = [];
 
       if (search) {
-        query = query.where(
+        conditions.push(
           or(
             ilike(countries.name, `%${search}%`),
             ilike(countries.iso, `%${search}%`)
@@ -79,18 +88,25 @@ export function registerRoutes(app: Express) {
         );
       }
 
+      if (riskLevel) {
+        conditions.push(eq(countries.riskLevel, riskLevel as any));
+      }
+
+      if (region) {
+        conditions.push(eq(countries.region, region));
+      }
+
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+
       const offset = (page - 1) * limit;
       const results = await query.limit(limit).offset(offset).orderBy(countries.name);
 
       // Get total count for pagination
-      let totalQuery = db.select({ count: count() }).from(countries);
-      if (search) {
-        totalQuery = totalQuery.where(
-          or(
-            ilike(countries.name, `%${search}%`),
-            ilike(countries.iso, `%${search}%`)
-          )
-        );
+      const totalQuery = db.select({ count: count() }).from(countries);
+      if (conditions.length > 0) {
+        totalQuery.where(and(...conditions));
       }
       const [{ count: total }] = await totalQuery;
 
@@ -106,6 +122,23 @@ export function registerRoutes(app: Express) {
     } catch (error) {
       logger.error({ error }, "Error fetching countries");
       res.status(500).json({ error: "Failed to fetch countries" });
+    }
+  });
+
+  // Get featured countries
+  app.get("/api/countries/featured", async (req, res) => {
+    try {
+      const featuredCountries = await db
+        .select()
+        .from(countries)
+        .where(eq(countries.featured, true))
+        .limit(6)
+        .orderBy(countries.complianceScore);
+
+      res.json({ countries: featuredCountries });
+    } catch (error) {
+      logger.error({ error }, "Error fetching featured countries");
+      res.status(500).json({ error: "Failed to fetch featured countries" });
     }
   });
 
@@ -136,15 +169,16 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  // Risk check endpoint - simplified mock implementation
+  // Risk check endpoint
   const riskCheckSchema = z.object({
     contractorName: z.string().min(1, "Contractor name is required"),
     contractorEmail: z.string().email().optional(),
     countryIso: z.string().length(2, "Country ISO must be 2 characters"),
-    contractorType: z.enum(['independent', 'eor', 'freelancer']),
+    contractorType: z.enum(['employee', 'contractor', 'freelancer']),
+    idempotencyKey: z.string().optional(),
   });
 
-  app.post("/api/risk-check", async (req, res) => {
+  app.post("/api/risk-check", riskCheckLimiter, async (req, res) => {
     try {
       const validatedData = riskCheckSchema.parse(req.body);
       
@@ -153,56 +187,7 @@ export function registerRoutes(app: Express) {
         country: validatedData.countryIso 
       }, 'Starting risk check');
 
-      // Get country information
-      const [country] = await db
-        .select()
-        .from(countries)
-        .where(eq(countries.iso, validatedData.countryIso.toUpperCase()))
-        .limit(1);
-
-      if (!country) {
-        return res.status(404).json({ error: "Country not found" });
-      }
-
-      // Create or get contractor
-      const [contractor] = await db.insert(contractors).values({
-        name: validatedData.contractorName,
-        countryId: country.id,
-        type: validatedData.contractorType,
-        paymentMethod: 'wire' // Default payment method
-      }).returning();
-
-      // Generate mock risk assessment
-      const overallScore = Math.floor(Math.random() * 40) + 30; // 30-70 range
-      const riskTier = overallScore >= 60 ? 'high' : overallScore >= 40 ? 'medium' : 'low';
-      
-      const topRisks = [
-        'Standard compliance requirements',
-        `${country.name} regulatory environment`,
-        'Cross-border payment considerations'
-      ];
-
-      const recommendations = [
-        'Review local employment laws',
-        'Ensure proper tax compliance',
-        'Maintain updated contractor agreements'
-      ];
-
-      // Store risk score
-      const [riskScore] = await db.insert(riskScores).values({
-        contractorId: contractor.id,
-        score: overallScore,
-        tier: riskTier,
-        topRisks: topRisks,
-        recommendations: recommendations,
-        penaltyRange: `$5,000 - $50,000`,
-        rulesetVersion: 1,
-        breakdown: {
-          compliance: overallScore,
-          tax: Math.max(overallScore - 10, 20),
-          employment: Math.max(overallScore - 5, 25)
-        }
-      }).returning();
+      const result = await enhancedRiskEngine.performRiskCheck(validatedData);
 
       // Track successful risk check
       await analyticsService.trackEvent({
@@ -210,24 +195,30 @@ export function registerRoutes(app: Express) {
         metadata: {
           contractorName: validatedData.contractorName,
           countryIso: validatedData.countryIso,
-          riskTier: riskTier,
-          overallScore: overallScore
+          riskTier: result.riskTier,
+          overallScore: result.overallScore,
+          partialResults: result.partialResults
         }
       });
 
       res.json({
         success: true,
         result: {
-          id: riskScore.id,
-          contractorId: contractor.id,
-          overallScore: overallScore,
-          riskTier: riskTier,
-          topRisks: topRisks,
-          recommendations: recommendations,
-          penaltyRange: `$5,000 - $50,000`,
-          generatedAt: new Date(),
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
-        }
+          id: result.id,
+          contractorId: result.contractorId,
+          overallScore: result.overallScore,
+          riskTier: result.riskTier,
+          topRisks: result.topRisks,
+          recommendations: result.recommendations,
+          penaltyRange: result.penaltyRange,
+          partialResults: result.partialResults,
+          failedSources: result.failedSources,
+          generatedAt: result.generatedAt,
+          expiresAt: result.expiresAt
+        },
+        ...(result.partialResults && {
+          warning: `Partial results: ${result.failedSources.join(', ')} data sources unavailable`
+        })
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -265,18 +256,17 @@ export function registerRoutes(app: Express) {
         return res.status(404).json({ error: "Risk assessment not found" });
       }
 
-      // Get contractor info
+      // Get contractor and country info
       const [contractor] = await db
         .select()
         .from(contractors)
         .where(eq(contractors.id, riskScore.contractorId))
         .limit(1);
 
-      // Get country info
       const [country] = await db
         .select()
         .from(countries)
-        .where(eq(countries.id, contractor?.countryId || ''))
+        .where(eq(countries.iso, contractor?.countryIso || ''))
         .limit(1);
 
       // Track PDF generation
@@ -285,7 +275,7 @@ export function registerRoutes(app: Express) {
         metadata: {
           contractorId: riskScore.contractorId,
           contractorName: contractor?.name,
-          riskTier: riskScore.tier
+          riskTier: riskScore.riskTier
         }
       });
 
@@ -296,10 +286,14 @@ export function registerRoutes(app: Express) {
         riskAssessment: {
           id: riskScore.id,
           contractorId: riskScore.contractorId,
-          overallScore: riskScore.score,
-          riskTier: riskScore.tier,
-          topRisks: riskScore.topRisks as string[],
-          recommendations: riskScore.recommendations as string[]
+          overallScore: riskScore.overallScore,
+          riskTier: riskScore.riskTier,
+          topRisks: (riskScore.details as any)?.topRisks || [],
+          recommendations: (riskScore.details as any)?.recommendations || [],
+          penaltyRange: (riskScore.details as any)?.penaltyRange || { min: 0, max: 0, currency: 'USD' },
+          sourceResults: (riskScore.details as any)?.sourceResults || {},
+          partialResults: (riskScore.details as any)?.partialResults || false,
+          failedSources: (riskScore.details as any)?.failedSources || []
         }
       });
 
@@ -342,37 +336,68 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  // Admin CMS - Compliance Rules (simplified)
+  // Admin CMS - Compliance Rules
   app.get("/api/admin/rules", async (req, res) => {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
+      const status = req.query.status as string;
+      const countryIso = req.query.countryIso as string;
 
-      const offset = (page - 1) * limit;
-      const results = await db
+      let query = db
         .select({
           id: complianceRules.id,
           countryId: complianceRules.countryId,
-          ruleType: complianceRules.ruleType,
+          title: complianceRules.title,
           description: complianceRules.description,
+          ruleType: complianceRules.ruleType,
+          category: complianceRules.category,
           severity: complianceRules.severity,
           status: complianceRules.status,
           version: complianceRules.version,
           effectiveFrom: complianceRules.effectiveFrom,
-          updatedAt: complianceRules.updatedAt,
+          effectiveTo: complianceRules.effectiveTo,
+          lastUpdated: complianceRules.lastUpdated,
           country: {
             name: countries.name,
             iso: countries.iso
           }
         })
         .from(complianceRules)
-        .leftJoin(countries, eq(complianceRules.countryId, countries.id))
+        .leftJoin(countries, eq(complianceRules.countryId, countries.id));
+
+      let conditions = [];
+
+      if (status) {
+        conditions.push(eq(complianceRules.status, status as any));
+      }
+
+      if (countryIso) {
+        conditions.push(eq(countries.iso, countryIso.toUpperCase()));
+      }
+
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+
+      const offset = (page - 1) * limit;
+      const results = await query
         .limit(limit)
         .offset(offset)
-        .orderBy(desc(complianceRules.updatedAt));
+        .orderBy(desc(complianceRules.lastUpdated));
 
       // Get total count
-      const [{ count: total }] = await db.select({ count: count() }).from(complianceRules);
+      let countQuery = db.select({ count: count() }).from(complianceRules);
+      if (countryIso) {
+        countQuery = countQuery
+          .leftJoin(countries, eq(complianceRules.countryId, countries.id))
+          .where(eq(countries.iso, countryIso.toUpperCase()));
+      }
+      if (status) {
+        countQuery = countQuery.where(eq(complianceRules.status, status as any));
+      }
+
+      const [{ count: total }] = await countQuery;
 
       res.json({
         rules: results,
@@ -389,14 +414,19 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  // Create new compliance rule (simplified)
+  // Create new compliance rule
   const createRuleSchema = z.object({
     countryId: z.string().uuid(),
-    ruleType: z.string().min(1),
+    title: z.string().min(1),
     description: z.string().min(1),
+    ruleType: z.enum(['classification', 'tax', 'privacy', 'labor', 'other']),
+    category: z.enum(['employment', 'tax', 'data_privacy', 'labor_law', 'other']),
     severity: z.number().min(1).max(10),
-    effectiveFrom: z.string().transform(str => new Date(str).toISOString().split('T')[0]),
-    sourceUrl: z.string().optional(),
+    requirements: z.array(z.string()),
+    penalties: z.string(),
+    source: z.string(),
+    effectiveFrom: z.string().transform(str => new Date(str)),
+    effectiveTo: z.string().transform(str => new Date(str)).optional(),
   });
 
   app.post("/api/admin/rules", async (req, res) => {
@@ -405,10 +435,20 @@ export function registerRoutes(app: Express) {
 
       const [newRule] = await db.insert(complianceRules).values({
         ...validatedData,
-        effectiveFrom: validatedData.effectiveFrom,
+        status: 'draft',
         version: 1,
-        updatedAt: new Date(),
+        lastUpdated: new Date(),
       }).returning();
+
+      // Log audit event
+      await db.insert(auditLogs).values({
+        action: 'create_rule',
+        entityType: 'compliance_rule',
+        entityId: newRule.id,
+        userId: 'admin', // In real app, get from auth
+        details: { ruleTitle: validatedData.title },
+        timestamp: new Date(),
+      });
 
       res.status(201).json({ rule: newRule });
     } catch (error) {
@@ -417,6 +457,78 @@ export function registerRoutes(app: Express) {
       }
       logger.error({ error }, "Error creating rule");
       res.status(500).json({ error: "Failed to create rule" });
+    }
+  });
+
+  // Publish compliance rule
+  app.post("/api/admin/rules/:id/publish", async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const [updatedRule] = await db
+        .update(complianceRules)
+        .set({
+          status: 'published',
+          version: sql`${complianceRules.version} + 1`,
+          lastUpdated: new Date(),
+        })
+        .where(eq(complianceRules.id, id))
+        .returning();
+
+      if (!updatedRule) {
+        return res.status(404).json({ error: "Rule not found" });
+      }
+
+      // Track rule publish
+      await analyticsService.trackEvent({
+        event: 'admin_rule_publish',
+        metadata: {
+          ruleId: id,
+          ruleTitle: updatedRule.title,
+          version: updatedRule.version
+        }
+      });
+
+      // Log audit event
+      await db.insert(auditLogs).values({
+        action: 'publish_rule',
+        entityType: 'compliance_rule',
+        entityId: id,
+        userId: 'admin',
+        details: { 
+          ruleTitle: updatedRule.title,
+          version: updatedRule.version 
+        },
+        timestamp: new Date(),
+      });
+
+      res.json({ rule: updatedRule, message: "Rule published successfully" });
+    } catch (error) {
+      logger.error({ error }, "Error publishing rule");
+      res.status(500).json({ error: "Failed to publish rule" });
+    }
+  });
+
+  // Get rule version history
+  app.get("/api/admin/rules/:id/history", async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const history = await db
+        .select()
+        .from(auditLogs)
+        .where(
+          and(
+            eq(auditLogs.entityType, 'compliance_rule'),
+            eq(auditLogs.entityId, id)
+          )
+        )
+        .orderBy(desc(auditLogs.timestamp));
+
+      res.json({ history });
+    } catch (error) {
+      logger.error({ error }, "Error fetching rule history");
+      res.status(500).json({ error: "Failed to fetch rule history" });
     }
   });
 

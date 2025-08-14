@@ -1,0 +1,34 @@
+Great progress. Here’s a concise reply you can paste to Replit’s agent to move it forward and surface missing pieces.
+
+Message to Replit
+- Thanks for the updates. I see the new tabs and UI, but data and actions aren’t visible. Please do the following end-to-end with real calls and show results in the Preview:
+  1) Seed and display countries
+     - Create/seed 20–30 countries in Postgres with last_updated.
+     - Wire GET /api/countries with pagination, filters, and connect the Search Results table to it.
+     - Show at least 6 “Featured Countries” with risk badges.
+  2) Implement Risk Check
+     - Build POST /api/risk-check with Zod validation, idempotency, rate limit.
+     - Connect the page “Run Risk Check” button to the API and render score, tier, top_risks, recommendations, penalty_range, and a partial-sources warning if any adapters fail.
+     - For now, use mock adapters that return deterministic sample data; keep the adapter interface so we can plug real providers later.
+  3) PDF generation
+     - Add “Download PDF” → enqueue job → generate with Puppeteer → upload to S3 (use env vars) → return pre-signed URL. Show a success toast and download.
+  4) Admin CMS
+     - Make the Rules list load from DB; create/edit/publish a rule; persist version history and show a diff.
+     - Every admin change should write an audit_log entry.
+  5) Analytics and monitoring
+     - Fire events: search_submit, country_view, risk_check_success, pdf_generate, pdf_download_success, admin_rule_publish.
+     - Add Sentry DSN wiring for FE/BE and a /health endpoint for api and rules-engine.
+  6) Env and config
+     - Print a checklist of required env vars for all services. If any are missing, fall back to mock providers and log a clear warning in Console.
+  7) Demo script
+     - After implementing, run a scripted demo: search → open a country → run risk check → download PDF → edit a rule → publish → see version history → view analytics counts increase.
+
+Also, please share:
+- The API routes you created with example requests/responses.
+- The DB schema/migration files used.
+- The adapter interface for sanctions/PEP and adverse media, even if mocked.
+- Any Console errors you encountered and how you handled them.
+
+If anything fails, don’t hide it—return partial results with a banner and list which sources failed.
+
+[1] https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/images/50977892/7afd31a7-4ea0-4bb9-9500-ae77181768b1/Screenshot-2025-08-14-at-4.28.13-PM.jpg?AWSAccessKeyId=ASIA2F3EMEYEWXYVUMPN&Signature=jO8WMR17pgCG3YORKG5lP%2BuWj9A%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEPv%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJHMEUCIBnxwlA9mKSB%2BPurxEpTkVuVVrmiMnJjtax4lMHRQbzSAiEAjGGoO954n3sgxS41cOOsUYGS531IoDr5%2BlebiYpVW3kq8QQIRBABGgw2OTk3NTMzMDk3MDUiDEs317IQIyg3RKT6IirOBOwx8Cul8f0fUEN9hP3VgGxtoe37JFhUvxCm1bEcqQm78BFhjt9noYMWPwqsarzWmDVdXihxdmvqDyZStm0e8qCe11BWVYgfEq%2B%2B%2FbiPLmSOp716Qd7F9erYCaF1i7qA7P5%2BgX6%2B91ZYotMxArMn13Xy0OMw4nSbfxvKk4a1Fquwi3BV7dzfROMhJGDQGMZBhreAtRxQVEvIYpc%2BQc2O0CgNNx%2Fv9VFUtQisZFk4DWSim1egB6Q0Bf02qIe7jE8fMpp5Y%2FzXNbji8QtQQyXf1sXozvGSIs5iwV4As%2BI87Q%2BjeyouFQT4%2FC4Ouih8YvQcTLF9XnlgLT2MR23CG2NQmxSGAXakHKyp%2FCWNwHeAvnEtU8IFJkUfnUQuorNgRHAxwb5T0nRMYr6OXvxcz6I7vSzlmRMVdyQQ3jcxYSV%2BBXcrrRZZgMcNxcZAxNjTeKGCfys9wjxfNEnwcOhwiVzQCIVreoPZYzuzIH8qkumBIkwldlVcfrDzNGGhXoiCVqc4xmWSJKu0pk7a7pCpzhzWH9IIZtHmeUZIq5Jh4J6IiPtlun34Z4%2B3CWK7Wtkg49HoDMsl8IlO8dtnjYOPc7skJc7KtDGzGVXX4bUkbroIkkXoebc9Sw4UCmzzGQXZUS%2BPknaeFPxAZJcoqpEyv9buycwSZsxxn9S%2BEhOwn6wDtRRhSvLr94aAKy33RUEo1A%2FnKVMVM%2Bif8pZYOg5h04zDFF3lwcY1NirqqidiSmeI17YjNAbVYeO2PnS3YvifktufnQVZ6FiKaQyHh2NFKqKjMM3z9sQGOpoB%2Fl%2BzyDljFdw5vrw92glEJloTITg79Qs2Th%2FTelr9Jf7BCUt9Aq0mxpGiuGGMyiamXEqRmKifcPJRLUS2xXhBmcHfPl7CQnnwHToMuY%2Flsvg2KTA8wByq52%2F%2F%2FV0zULvs2P81DRW4c3saZGkkYkPBmd%2FG8%2B0LXq4xfiofdA2rwXnHID%2Ffep%2FJ4M%2FNBI203DdP9QGhMs4t5j2W0g%3D%3D&Expires=1755169760
