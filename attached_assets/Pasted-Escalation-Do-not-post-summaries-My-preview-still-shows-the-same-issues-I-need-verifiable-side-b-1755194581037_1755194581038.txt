@@ -1,0 +1,73 @@
+Escalation: Do not post summaries. My preview still shows the same issues. I need verifiable, side-by-side evidence from MY running preview URL. Deliverables below are mandatory. If you cannot produce them, roll back any local-only changes and push a working commit that updates my preview.
+
+Hard requirements — deliver within one update:
+
+Side-by-side proof screenshots
+
+Provide two screenshots captured seconds apart:
+
+A: My current preview URL visible in the browser chrome (the .replit.dev URL) showing the before state.
+
+B: The same URL after your fixes showing the after state.
+
+Screens must include the browser address bar with the identical URL, the element being fixed (e.g., Popular Countries ranks with counts, Admin page without 404, Generate PDF → Download button active), and the system clock in the OS tray if possible.
+
+Click-through GIF from my preview
+
+A short screen recording (GIF) from my preview that shows:
+
+Home: Popular Countries with counts and tooltip.
+
+Search → select a country.
+
+Risk Assessment with “Use test data” buttons → run John Smith (US) and Vladimir Putin (RU).
+
+“How scoring works” modal.
+
+Generate PDF → poll → auto Download opening the file.
+
+Admin: open without 404, create/edit/publish a rule → version history updates.
+
+Analytics: numbers increment after your actions.
+
+Put this GIF in /verification/demo.gif and link it.
+
+Live JSON captured from my preview actions
+
+Paste the exact API responses you triggered during the GIF recording:
+
+GET /health
+
+GET /api/analytics
+
+GET /api/countries?query=Côte and ?query=Cote
+
+GET /api/popular-countries (or the endpoint you implemented), including counts and time window used
+
+POST /api/risk-check (both cases) full JSON including providerInfo
+
+POST /api/pdf-report → 202 with job_id and GET /api/pdf-report/:id → {url,size_bytes}
+
+These must match the UI you just recorded.
+
+Working sample.pdf
+
+The exact PDF downloaded in the GIF must be added to /verification/sample.pdf in the repo. Link it.
+
+Commit and deploy the fixes
+
+Push code changes so that when I refresh my preview I see the new behavior. Paste the commit SHA and a list of files changed.
+
+If you cannot reproduce in my preview
+
+Stop development: push the current working code to the repo, restart the App, and ensure my preview reflects it.
+
+Provide a written root cause analysis of why your earlier “proofs” didn’t appear in my preview (e.g., ran in a hidden tab, didn’t push, cached build). Fix your workflow to always update my preview.
+
+Acceptance criteria — no exceptions
+
+My preview reflects: popular countries with counts and tooltip, no duplicate nav, admin no 404, settings diagnostics populated, risk scoring modal present, PDF generation and download works, analytics updates, no React overlays.
+
+I can repeat your GIF steps and see identical results.
+
+Do not reply with “working” until you attach the side-by-side screenshots, the GIF, the raw JSONs, and the sample.pdf from the same run, and I can refresh and see the same in my preview.

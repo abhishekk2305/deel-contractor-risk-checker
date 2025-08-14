@@ -465,6 +465,13 @@ export default function SearchPage() {
                         
                         <Button 
                           variant="outline"
+                          onClick={() => setShowScoringModal(true)}
+                        >
+                          How Scoring Works
+                        </Button>
+                        
+                        <Button 
+                          variant="outline"
                           onClick={() => {
                             setRiskResult(null);
                             setContractorName('');
@@ -479,8 +486,23 @@ export default function SearchPage() {
                 </CardContent>
               </Card>
             )}
+            
+            {/* Test Data Button */}
+            {selectedCountry && !riskResult && (
+              <div className="flex justify-center mt-4">
+                <TestDataButton onTestSelect={(preset) => {
+                  setContractorName(preset.contractorName);
+                  setContractorEmail(preset.contractorEmail);
+                  setContractorType(preset.contractorType);
+                }} />
+              </div>
+            )}
           </div>
         </div>
+        
+        {/* Modals */}
+        <ScoringTransparencyModal isOpen={showScoringModal} onClose={() => setShowScoringModal(false)} />
+        <PdfModal isOpen={showPdfModal} onClose={() => setShowPdfModal(false)} riskAssessmentId={riskResult?.id} />
       </main>
     </div>
   );
