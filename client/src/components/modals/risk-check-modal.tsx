@@ -107,24 +107,43 @@ export function RiskCheckModal({ isOpen, onClose, country, onSuccess }: RiskChec
             <div>
               <h3 className="font-semibold text-gray-900 mb-3">Top Risk Factors</h3>
               <div className="space-y-2">
-                {assessment.topRisks.map((risk: any, index: number) => (
-                  <div key={index} className="p-3 bg-gray-50 rounded-lg">
-                    <div className="font-medium text-gray-900">{risk.title}</div>
-                    <div className="text-sm text-gray-600">{risk.description}</div>
-                  </div>
-                ))}
+                {(() => {
+                  // Normalize topRisks to always be an array
+                  const topRisks = Array.isArray(assessment.topRisks) ? assessment.topRisks : [assessment.topRisks].filter(Boolean);
+                  console.log('topRisks normalized:', topRisks);
+                  return topRisks.map((risk: any, index: number) => (
+                    <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                      <div className="font-medium text-gray-900">{risk?.title || 'Risk Factor'}</div>
+                      <div className="text-sm text-gray-600">{risk?.description || 'No description available'}</div>
+                      {risk?.severity && (
+                        <span className={`inline-block mt-1 px-2 py-1 text-xs rounded ${
+                          risk.severity === 'low' ? 'bg-green-100 text-green-800' :
+                          risk.severity === 'medium' ? 'bg-amber-100 text-amber-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {risk.severity.toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                  ));
+                })()}
               </div>
             </div>
 
             <div>
               <h3 className="font-semibold text-gray-900 mb-3">Recommendations</h3>
               <ul className="space-y-1">
-                {assessment.recommendations.map((rec: string, index: number) => (
-                  <li key={index} className="text-sm text-gray-700 flex items-start">
-                    <span className="text-green-500 mr-2">•</span>
-                    {rec}
-                  </li>
-                ))}
+                {(() => {
+                  // Normalize recommendations to always be an array
+                  const recommendations = Array.isArray(assessment.recommendations) ? assessment.recommendations : [assessment.recommendations].filter(Boolean);
+                  console.log('recommendations normalized:', recommendations);
+                  return recommendations.map((rec: string, index: number) => (
+                    <li key={index} className="text-sm text-gray-700 flex items-start">
+                      <span className="text-green-500 mr-2">•</span>
+                      {rec}
+                    </li>
+                  ));
+                })()}
               </ul>
             </div>
 

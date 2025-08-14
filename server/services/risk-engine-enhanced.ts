@@ -166,13 +166,17 @@ export class EnhancedRiskEngine {
         countryBaseline: baseline
       };
       
+      // Ensure topRisks and recommendations are always arrays for React
+      const safeTopRisks = Array.isArray(topRisks) ? topRisks : [topRisks].filter(Boolean);
+      const safeRecommendations = Array.isArray(recommendations) ? recommendations : [recommendations].filter(Boolean);
+
       const result: RiskAssessmentResult = {
         id: crypto.randomUUID(),
         contractorId: '', // Will be set by caller
         overallScore,
         riskTier,
-        topRisks,
-        recommendations,
+        topRisks: safeTopRisks,
+        recommendations: safeRecommendations,
         penaltyRange,
         partialSources: partialSources.length > 0 ? partialSources : undefined,
         rulesetVersion: 1,
