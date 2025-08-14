@@ -370,7 +370,10 @@ export function registerRoutes(app: Express) {
       });
 
       // Enqueue PDF generation
-      const jobId = await pdfService.enqueuePDFGeneration({
+      const { PDFService } = await import('./services/pdf-service');
+      const pdfServiceInstance = new PDFService();
+      
+      const jobId = await pdfServiceInstance.enqueuePDFGeneration({
         contractorName: contractor?.name || 'Unknown',
         countryName: country?.name || 'Unknown',
         riskAssessment: {
@@ -378,7 +381,7 @@ export function registerRoutes(app: Express) {
           contractorId: riskScore.contractorId,
           overallScore: riskScore.score,
           riskTier: riskScore.tier,
-          topRisks: riskScore.topRisks as string[],
+          topRisks: riskScore.topRisks as any[],
           recommendations: riskScore.recommendations as string[]
         }
       });
@@ -397,7 +400,9 @@ export function registerRoutes(app: Express) {
   app.get("/api/pdf-report/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const status = await pdfService.getJobStatus(id);
+      const { PDFService } = await import('./services/pdf-service');
+      const pdfServiceInstance = new PDFService();
+      const status = await pdfServiceInstance.getJobStatus(id);
 
       if (!status) {
         return res.status(404).json({ error: "Job not found" });
@@ -408,7 +413,7 @@ export function registerRoutes(app: Express) {
         await analyticsService.trackEvent({
           event: 'pdf_download_success',
           metadata: {
-            jobId,
+            jobId: id,
             contractorName: status.contractorName
           }
         });
