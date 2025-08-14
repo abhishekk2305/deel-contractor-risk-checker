@@ -1,11 +1,12 @@
 import { createChildLogger } from "../lib/logger";
 import { complyAdvantageProvider, type SanctionsCheckResult } from "../providers/comply-advantage";
 import { newsAPIProvider, type AdverseMediaResult } from "../providers/news-api";
+import { SanctionsFactory } from '../providers/sanctions/sanctionsFactory';
 
 const logger = createChildLogger('risk-engine-enhanced');
 
 // Feature flags for provider selection
-const FEATURE_SANCTIONS_PROVIDER = process.env.FEATURE_SANCTIONS_PROVIDER || 'mock'; // 'mock' | 'complyadvantage'
+const FEATURE_SANCTIONS_PROVIDER = process.env.SANCTIONS_PROVIDER || 'seon'; // 'seon' | 'amlbot' | 'complyadvantage'
 const FEATURE_MEDIA_PROVIDER = process.env.FEATURE_MEDIA_PROVIDER || 'mock'; // 'mock' | 'newsapi'
 
 export interface RiskAssessmentRequest {
@@ -205,8 +206,57 @@ export class EnhancedRiskEngine {
   private async checkSanctions(contractorName: string, countryIso: string): Promise<SanctionsCheckResult> {
     if (FEATURE_SANCTIONS_PROVIDER === 'complyadvantage') {
       return await complyAdvantageProvider.checkSanctions(contractorName, countryIso);
+    } else if (FEATURE_SANCTIONS_PROVIDER === 'seon' || FEATURE_SANCTIONS_PROVIDER === 'amlbot') {
+      // Use new live sanctions providers
+      try {
+        const adapter = SanctionsFactory.getAdapter();
+        const result = await adapter.screenPerson(contractorName, countryIso);
+        
+        // Convert to legacy format for compatibility
+        const pepMatches = result.matches.filter(match => {
+          if ('watchlist' in match) {
+            return match.watchlist.includes('pep');
+          } else if ('type' in match) {
+            return match.type === 'pep';
+          }
+          return false;
+        });
+
+        const sanctionMatches = result.matches.filter(match => {
+          if ('watchlist' in match) {
+            return match.watchlist.includes('sanctions');
+          } else if ('type' in match) {
+            return match.type === 'sanction';
+          }
+          return false;
+        });
+
+        return {
+          isSanctioned: sanctionMatches.length > 0,
+          isPEP: pepMatches.length > 0,
+          riskScore: result.riskScore,
+          confidence: result.riskScore,
+          sources: [result.metadata.provider],
+          details: {
+            provider: result.metadata.provider,
+            requestId: result.metadata.requestId,
+            totalMatches: result.matches.length,
+            sanctionMatches: sanctionMatches.length,
+            pepMatches: pepMatches.length,
+            processedAt: result.metadata.processedAt
+          }
+        };
+      } catch (error) {
+        logger.error({
+          component: 'risk-engine',
+          provider: FEATURE_SANCTIONS_PROVIDER,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }, 'Live sanctions provider failed');
+        
+        throw error; // Don't fallback to mock per requirements
+      }
     } else {
-      // Use mock provider
+      // Use mock provider only for testing
       return this.getMockSanctionsResult(contractorName, countryIso);
     }
   }

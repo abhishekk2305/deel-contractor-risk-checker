@@ -38,12 +38,35 @@ export function registerRoutes(app: Express) {
       // Test database connection
       const [dbCheck] = await db.select({ count: count() }).from(countries).limit(1);
       
+      // Check sanctions provider health
+      let sanctionsHealth = { status: 'unknown', provider: 'none' };
+      try {
+        const { SanctionsFactory } = await import('./providers/sanctions/sanctionsFactory');
+        const healthResult = await SanctionsFactory.healthCheck();
+        sanctionsHealth = {
+          status: healthResult.status,
+          provider: healthResult.provider,
+          responseTime: healthResult.responseTime
+        };
+      } catch (error) {
+        sanctionsHealth = { 
+          status: 'error', 
+          provider: process.env.SANCTIONS_PROVIDER || 'unknown',
+          error: error instanceof Error ? error.message : 'Unknown error'
+        };
+      }
+      
       res.json({
         status: 'healthy',
         timestamp: new Date().toISOString(),
+        build_sha: process.env.BUILD_SHA || 'dev',
         database: true,
         redis: true, // Mock for now
         s3: true, // Mock for now
+        providers: {
+          sanctions: sanctionsHealth.provider,
+          media: process.env.FEATURE_MEDIA_PROVIDER || 'mock'
+        },
         responseTime: Date.now() - req.start || 0,
         version: '1.0.0'
       });
@@ -192,21 +215,21 @@ export function registerRoutes(app: Express) {
         paymentMethod: 'wire' // Default payment method
       }).returning();
 
-      // Generate mock risk assessment
-      const overallScore = Math.floor(Math.random() * 40) + 30; // 30-70 range
-      const riskTier = overallScore >= 60 ? 'high' : overallScore >= 40 ? 'medium' : 'low';
+      // Use enhanced risk engine for real risk assessment
+      const { EnhancedRiskEngine } = await import('./services/risk-engine-enhanced');
+      const riskEngine = new EnhancedRiskEngine();
       
-      const topRisks = [
-        'Standard compliance requirements',
-        `${country.name} regulatory environment`,
-        'Cross-border payment considerations'
-      ];
+      const riskResult = await riskEngine.assessRisk({
+        contractorName: validatedData.contractorName,
+        contractorEmail: validatedData.contractorEmail,
+        countryIso: validatedData.countryIso,
+        contractorType: validatedData.contractorType
+      });
 
-      const recommendations = [
-        'Review local employment laws',
-        'Ensure proper tax compliance',
-        'Maintain updated contractor agreements'
-      ];
+      const overallScore = riskResult.overallScore;
+      const riskTier = riskResult.riskTier;
+      const topRisks = riskResult.topRisks.map(risk => risk.title);
+      const recommendations = riskResult.recommendations;
 
       // Store risk score
       const [riskScore] = await db.insert(riskScores).values({

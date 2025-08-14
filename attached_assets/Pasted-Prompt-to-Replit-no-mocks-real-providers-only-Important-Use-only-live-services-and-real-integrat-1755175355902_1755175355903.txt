@@ -1,0 +1,145 @@
+Prompt to Replit — no mocks, real providers only
+Important: Use only live services and real integrations. Do not use any mock data, stub adapters, or simulated responses anywhere. If any provider quota or credential blocks progress, stop and report the exact error and required action.
+
+A) Countries — full real catalog
+
+Seed the complete ISO‑3166‑1 alpha‑2 catalog: ~249 countries with {id, iso, name, last_updated}.
+
+Add has_rules boolean to indicate where compliance rules exist, but search/list must include all countries.
+
+Search behavior: case- and diacritic-insensitive on name and ISO (unaccent + ILIKE). No client-side filtering; all backed by DB.
+
+Pagination: default page_size=20; return {items, total, page, page_size}. Sort by name ASC (default) and support sort=updated_at DESC.
+
+Proof to post:
+
+SELECT COUNT(*) FROM countries; must be ~249.
+
+GET /api/countries?page=1&page_size=50 (JSON shows total ~249).
+
+Search proofs with JSON: query=an, uni, Côte, DE, AE.
+
+B) Real external providers only
+
+Sanctions/PEP: ComplyAdvantage (live or sandbox account) must be actually called. Show request metadata (redact secrets) and real response fields used.
+
+Adverse media: NewsAPI or GDELT real calls. Show request/response excerpts used in scoring.
+
+If a provider fails due to rate limit/quota/credential, do not substitute a mock. Surface partial_sources and the exact provider error in logs and UI banner, and report what is needed to resolve (e.g., higher quota).
+
+Post: provider status section with timestamps, base URLs hit, and evidence of real calls.
+
+C) Admin CMS, Admin nav, Settings
+
+No 404s. Implement full CRUD + publish + version history (diff) with audit_logs written.
+
+Settings must show real diagnostics:
+
+Active providers (complyadvantage, newsapi), current rate-limit settings, tier thresholds/weights, build SHA, health checks for DB/Redis/S3, backend URLs.
+
+“Run diagnostics” button executes /health and displays results.
+
+D) Risk Check (live scoring only)
+
+POST /api/risk-check returns real results:
+{score, tier, top_risks, recommendations[3+], penalty_range, partial_sources[], ruleset_version, created_at}.
+
+Idempotency: same Idempotency-Key → identical result; different key → new record.
+
+Rate limiting: enforce; return 429 with Retry-After on exceed.
+
+“How scoring works” modal must display actual current weights, thresholds, ruleset_version, and which providers contributed (live), plus any partial_sources.
+
+E) PDF generation
+
+Generate real PDFs with Puppeteer and upload to S3; return pre‑signed URL. Footer must include ruleset_version, timestamp, and partial source notice if applicable. Numeric values two decimals; dates human-readable.
+
+F) UI/UX and accessibility polish
+
+Two-decimal formatting everywhere for scores/metrics using locale-aware formatter.
+
+Dates as “Aug 14, 2025.”
+
+Partial-sources amber banner with details toggle.
+
+Proper empty/error states and ARIA attributes; modal focus trap; aria-live for async statuses.
+
+G) Tests (against live stack)
+
+Implement automated tests that hit the real API (not unit mocks) for:
+
+Countries search (exact, partial, ISO, diacritics) and pagination totals.
+
+Admin rule create/edit/publish/version (requires authenticated token).
+
+Risk-check idempotency and rate-limit 429.
+
+Post test results and the exact commands used.
+
+H) Observability, security, metrics
+
+/health returns {status, build_sha, db, redis, s3, providers:{sanctions, media}} with live checks.
+
+/metrics exposes Prometheus counters/histograms by route.
+
+Helmet/CSP/CORS headers enforced; paste sample headers from an admin response.
+
+Sentry FE/BE initialized; send one real test error; post event ID.
+
+Logs must redact PII; show last 5 audit_logs rows (masked).
+
+I) Public verification pack (must be accessible)
+
+Create /verification containing ONLY real artifacts:
+
+seed.sql and migrations
+
+curl/ scripts + real sample responses
+
+sample-pdf.pdf generated from a real risk check
+
+screenshots/GIF of the full live flow
+
+README: step-by-step to reproduce on the public preview
+
+Paste the exact public preview URL where I can perform:
+search → country detail → run real risk check → download PDF → admin create/edit/publish → see version history + audit log → watch analytics update.
+
+J) Share final proofs inline in chat
+
+GET /health output (with build_sha and checks).
+
+GET /api/countries?query=an&page=1&page_size=10 JSON (total ~249).
+
+POST /api/risk-check real request body + full JSON response.
+
+POST /api/pdf-report 202 job_id → poll → pre‑signed URL; attach the real generated PDF.
+
+Admin: POST/PUT publish responses and GET versions for one country (e.g., IN) with audit_log entry.
+
+Headers from an admin response showing Helmet/CSP/CORS.
+
+Screenshot of Risk Distribution showing two-decimal formatting and a real partial-sources banner (trigger by hitting provider rate limit or a controlled timeout).
+
+Sentry test event ID and /metrics sample.
+
+K) Deployment (only after all the above pass with real integrations)
+
+Configure Deploys for frontend, api, rules-engine, worker (Always On).
+
+Post per-service env var lists (mask secrets).
+
+Provide the deployment runbook:
+
+Deploy + rollback steps per service
+
+API_JWT_SECRET rotation steps
+
+Post-deploy verification checklist: health checks, live sample risk check, PDF generation, admin publish, analytics counters update
+
+Optional: configure custom domain for frontend; share required DNS records.
+
+Do not use any mocks/stubs. If any step cannot be done with real providers or data, stop, explain precisely why (quota/credential/etc.), and specify the exact actions I must take (e.g., upgrade plan, new API key scope) to proceed.
+
+
+
