@@ -1,0 +1,168 @@
+Final directive: restore stability, then fix and prove in my preview
+
+Phase 0 — Stop breaking main
+
+Create a new branch for fixes: feature/stabilization. Do NOT edit server/routes.ts on main.
+
+If branching is not possible due to restrictions, copy the current repo to a new Repl, but you must keep my current preview working while you fix on a separate environment.
+
+Phase 1 — Lock a green baseline that I can see
+
+Roll back Popular Countries to alphabetical is fine for baseline. Make sure the home loads.
+
+Paste these 3 items from my preview, not localhost:
+
+Screenshot of home page loading from my .replit.dev URL
+
+GET /health JSON
+
+Output of npm run build (or whatever build succeeds)
+
+Phase 2 — Eliminate all TypeScript errors first
+
+Run npx tsc --noEmit and paste the first 10 errors.
+
+Fix them in focused commits until npx tsc --noEmit passes with 0 errors.
+
+Paste:
+
+The command output showing 0 errors
+
+The commit SHAs and a one-line summary per fix
+
+Phase 3 — Ship fixes in tiny, verifiable commits (one at a time)
+A) Popular Countries ranking (7-day searches)
+
+Backend: /api/countries/popular?window=7d&limit=6
+
+UI: show count badges and a tooltip “Ranked by searches in the last 7 days.”
+
+Proof from my preview:
+
+API JSON response
+
+Screenshot of home card showing counts
+
+Commit SHA.
+
+B) Remove duplicate nav; add clean breadcrumbs
+
+Risk Assessment, Analytics, Admin only in top nav. Country pages should not render duplicate sections.
+
+Proof: screenshots of country page showing no duplicates.
+
+Commit SHA.
+
+C) Admin CMS no 404; Settings diagnostics populated
+
+/admin routes must work; Settings shows build SHA, ruleset version, DB/Redis/S3/providers; “Run diagnostics” calls /health and paints green checks.
+
+Proof: screenshots.
+
+Commit SHA.
+
+D) Risk Assessment clarity
+
+Add “Use test data” buttons for John Smith (US) and Vladimir Putin (RU).
+
+“How scoring works” modal with weights, thresholds, formula, sources (“OpenSanctions (live)”, “NewsAPI (live)”).
+
+Proof: screenshots and the two full POST /api/risk-check JSONs.
+
+Commit SHA.
+
+E) PDF pipeline
+
+POST /api/pdf-report → 202 {job_id}; GET /api/pdf-report/:id → {url,size_bytes,expires_at}
+
+UI: Generate PDF → progress → Download opens the pre-signed URL.
+
+Proof:
+
+The 202 JSON and poll JSON for the same run
+
+The pre-signed URL that downloads now
+
+The exact file saved to /verification/sample.pdf
+
+Commit SHA.
+
+F) Analytics clarity
+
+Cards reflect real events; chart shows today’s events; include 7/30/90-day selector.
+
+Proof: /api/analytics JSON and dashboard screenshot.
+
+Commit SHA.
+
+G) Reliability and security
+
+Add error boundaries; ensure no React runtime overlays appear anywhere during test flow.
+
+Paste a browser console screenshot with no red errors.
+
+Paste admin API response headers showing Helmet/CSP/CORS and rate limit headers.
+
+Commit SHA.
+
+Phase 4 — Evidence bundle recorded from MY preview
+
+Record a 2–3 minute GIF from the .replit.dev preview showing:
+
+Home Popular Countries with counts/tooltip
+
+Search “Côte” and “Cote” → Côte d’Ivoire
+
+“Use test data” → John Smith (US) → modal → Generate PDF → download
+
+“Use test data” → Vladimir Putin (RU) → sanctions hits visible
+
+Admin create→edit→publish rule → version history
+
+Analytics increments
+
+Save at /verification/demo.gif and link it.
+
+Paste a single message with:
+
+My preview URL
+
+/health JSON
+
+Popular countries JSON + matching screenshot
+
+Two risk-check JSONs
+
+PDF 202 + poll JSON + working URL + link to /verification/sample.pdf
+
+Admin screenshots (no 404) + version history
+
+/api/analytics JSON + dashboard screenshot
+
+Security headers snippet
+
+/metrics snippet
+
+The commit SHAs for A–G
+
+Only after this, ask me to refresh and verify.
+
+If you cannot branch or reset
+
+Fork the Repl and implement all fixes there to completion with the same proofs, then we can migrate the working code back to this Repl.
+
+What I will accept as “done”
+
+My preview reflects all UI changes.
+
+No runtime error overlays.
+
+Popular Countries show counts with a 7-day rule.
+
+Risk assessments have “Use test data,” correct scoring modal, and a working PDF download.
+
+Admin has no 404 and shows a working Settings diagnostics panel.
+
+Analytics reflects my interactions.
+
+Anything else (summaries, localhost curls, or files added without UI change) will be rejected.
