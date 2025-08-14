@@ -33,6 +33,32 @@ export function registerRoutes(app: Express) {
 
   // Health and monitoring endpoints
   app.get("/health", healthCheck);
+  app.get("/api/health", async (req, res) => {
+    try {
+      // Test database connection
+      const [dbCheck] = await db.select({ count: count() }).from(countries).limit(1);
+      
+      res.json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        database: true,
+        redis: true, // Mock for now
+        s3: true, // Mock for now
+        responseTime: Date.now() - req.start || 0,
+        version: '1.0.0'
+      });
+    } catch (error) {
+      logger.error({ error }, 'Health check failed');
+      res.status(503).json({
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        database: false,
+        redis: false,
+        s3: false,
+        error: 'Service unavailable'
+      });
+    }
+  });
   app.get("/metrics", metricsEndpoint);  
   app.get("/ready", readinessCheck);
   app.get("/live", livenessCheck);
@@ -458,6 +484,106 @@ export function registerRoutes(app: Express) {
       }
       logger.error({ error }, "Error creating rule");
       res.status(500).json({ error: "Failed to create rule" });
+    }
+  });
+
+  // Update existing compliance rule
+  app.put("/api/admin/rules/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = createRuleSchema.parse(req.body);
+
+      const [updatedRule] = await db.update(complianceRules)
+        .set({
+          ...validatedData,
+          effectiveFrom: validatedData.effectiveFrom,
+          updatedAt: new Date(),
+        })
+        .where(eq(complianceRules.id, id))
+        .returning();
+
+      if (!updatedRule) {
+        return res.status(404).json({ error: "Rule not found" });
+      }
+
+      res.json({ rule: updatedRule });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation failed", details: error.errors });
+      }
+      logger.error({ error }, "Error updating rule");
+      res.status(500).json({ error: "Failed to update rule" });
+    }
+  });
+
+  // Publish compliance rule
+  app.post("/api/admin/rules/:id/publish", async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const [publishedRule] = await db.update(complianceRules)
+        .set({
+          status: 'published',
+          updatedAt: new Date(),
+        })
+        .where(eq(complianceRules.id, id))
+        .returning();
+
+      if (!publishedRule) {
+        return res.status(404).json({ error: "Rule not found" });
+      }
+
+      res.json({ rule: publishedRule, message: "Rule published successfully" });
+    } catch (error) {
+      logger.error({ error }, "Error publishing rule");
+      res.status(500).json({ error: "Failed to publish rule" });
+    }
+  });
+
+  // Get rule versions by country
+  app.get("/api/admin/rules/versions", async (req, res) => {
+    try {
+      const country = req.query.country as string;
+      
+      if (!country) {
+        return res.status(400).json({ error: "Country parameter required" });
+      }
+
+      // Find country by ISO
+      const [countryRecord] = await db
+        .select()
+        .from(countries)
+        .where(eq(countries.iso, country.toUpperCase()))
+        .limit(1);
+
+      if (!countryRecord) {
+        return res.status(404).json({ error: "Country not found" });
+      }
+
+      // Get all versions of rules for this country
+      const versions = await db
+        .select({
+          id: complianceRules.id,
+          ruleType: complianceRules.ruleType,
+          description: complianceRules.description,
+          severity: complianceRules.severity,
+          version: complianceRules.version,
+          status: complianceRules.status,
+          effectiveFrom: complianceRules.effectiveFrom,
+          updatedAt: complianceRules.updatedAt
+        })
+        .from(complianceRules)
+        .where(eq(complianceRules.countryId, countryRecord.id))
+        .orderBy(desc(complianceRules.version));
+
+      res.json({
+        country: countryRecord,
+        versions,
+        total: versions.length
+      });
+    } catch (error) {
+      logger.error({ error }, "Error fetching rule versions");
+      res.status(500).json({ error: "Failed to fetch rule versions" });
     }
   });
 

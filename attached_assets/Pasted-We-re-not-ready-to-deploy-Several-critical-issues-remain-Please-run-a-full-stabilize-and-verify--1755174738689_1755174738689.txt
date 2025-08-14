@@ -1,0 +1,155 @@
+We’re not ready to deploy. Several critical issues remain. Please run a full “stabilize and verify” pass and post evidence for each fix.
+
+Blocking bugs to fix now
+
+Countries search/list
+
+Symptom: Not all countries appear; search misses valid matches.
+
+Fix:
+
+Implement case/diacritic‑insensitive search on name and ISO (ILIKE + unaccent).
+
+Add pagination and total count; default page_size=20; provide page controls.
+
+Ensure seed has ≥30 countries; verify counts.
+
+Return sorted by name ASC by default; allow sort=updated_at DESC.
+
+Post: the SQL used, example GET /api/countries?query=an&page=1&page_size=20, and JSON showing items + total.
+
+Countries tab not loading
+
+Symptom: Countries tab intermittently blank.
+
+Fix:
+
+Add loading/error states; catch API errors; retry with backoff.
+
+Log errors to Sentry with tag route=/api/countries.
+
+Post: console/network screenshots showing successful fetch and rendered list.
+
+Admin CMS 404 and Admin tab broken
+
+Symptom: /admin/cms shows 404; settings empty.
+
+Fix:
+
+Ensure admin routes exist and are protected by JWT RBAC.
+
+Implement Admin pages:
+
+Rules CMS: list, create/edit, publish, version history (diff).
+
+Settings: feature flags, provider mode, rate limits, ruleset thresholds (read‑only ok).
+
+Add navigation to correct paths and guards for unauthorized users.
+
+Post: working links, screenshots, and API responses for:
+
+POST /api/admin/rules (draft)
+
+PUT /api/admin/rules/:id
+
+POST /api/admin/rules/:id/publish
+
+GET /api/admin/rules/versions?country=IN
+
+Search correctness tests
+
+Add automated tests:
+
+Exact match (e.g., “India”), partial (“an”), ISO (“IN”).
+
+Pagination boundaries (page 1..N), empty results, diacritics (e.g., “Côte d’Ivoire” if present).
+
+Post: test outputs (pass/fail) and cURL samples with expected JSON.
+
+Settings page content
+
+Populate Settings with read‑only environment diagnostics (mask secrets):
+
+Provider modes (sanctions=complyadvantage|mock; media=newsapi|mock)
+
+Rate‑limit values
+
+Ruleset thresholds/weights
+
+Build SHA, backend base URLs, /health status
+
+Add “Run diagnostics” button → calls /health and shows DB/Redis/S3 checks.
+
+Error handling and empty states
+
+Countries/search: “No results. Reset filters.”
+
+Admin CMS: if no rules, show “Create first rule.”
+
+Partial sources: show amber banner with details on Risk Check Results.
+
+Number/date formatting
+
+Risk Distribution and score values: format to two decimals using toLocaleString with { minimumFractionDigits: 2, maximumFractionDigits: 2 }.
+
+Dates: format as “Aug 14, 2025.”
+
+Apply same formatting in PDF.
+
+Verification artifacts to post
+
+Video or GIF: end‑to‑end flow covering Search → Country → Risk Check → PDF → Admin create/edit/publish → Version history diff → Settings diagnostics.
+
+API proofs:
+
+GET /api/countries with query/pagination examples.
+
+POST /api/risk-check response JSON including score/tier/top_risks/recommendations/penalty_range/partial_sources/ruleset_version.
+
+PDF: 202 job_id → poll → pre‑signed URL; attach one sample PDF.
+
+Admin endpoints responses.
+
+DB proofs:
+
+SELECT counts from countries, compliance_rules, ruleset_versions, contractors, risk_scores, pdf_reports, audit_logs.
+
+Last 5 audit_logs rows (mask PII).
+
+Headers/security:
+
+Show response headers for admin route (Helmet/CSP/CORS).
+
+401/403 for unauthenticated admin calls.
+
+Tests:
+
+Output from automated search tests and admin route tests.
+
+Sentry:
+
+One test error event ID.
+
+/metrics:
+
+Sample of Prometheus metrics for countries and risk-check routes.
+
+Acceptance criteria (must meet before we deploy)
+
+Countries: ≥30 seeded, search returns correct results for exact/partial/ISO, with pagination and totals.
+
+Admin CMS: no 404; can create/edit/publish rules; version history visible; audit logs recorded.
+
+Settings: diagnostics populated; /health green for DB/Redis/S3.
+
+Risk Check: returns 200 with correct fields; partial sources banner shows when simulated timeout occurs.
+
+PDF: generated, downloadable, with correct formatting and footer metadata.
+
+Formatting: all numeric cards show exactly two decimals; dates human‑friendly.
+
+Security: admin routes require JWT; headers include Helmet/CSP; rate limits and idempotency verified.
+
+Monitoring: Sentry receiving events; /metrics exposed.
+
+Please implement these fixes and post the artifacts. If any item cannot be fulfilled, state why and propose the workaround.

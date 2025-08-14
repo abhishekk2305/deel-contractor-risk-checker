@@ -6,7 +6,7 @@
  * @returns Formatted string with exactly 2 decimal places
  */
 export function formatScore(n: number): string {
-  return n.toLocaleString(undefined, { 
+  return n.toLocaleString('en-US', { 
     minimumFractionDigits: 2, 
     maximumFractionDigits: 2 
   });
@@ -72,8 +72,8 @@ export function formatCurrency(amount: number, currency: string = 'USD'): string
   return amount.toLocaleString('en-US', {
     style: 'currency',
     currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
   });
 }
 
