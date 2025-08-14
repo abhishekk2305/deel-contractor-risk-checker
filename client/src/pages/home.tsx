@@ -279,7 +279,7 @@ export default function HomePage() {
                       tier.tier === 'low' ? 'text-green-600' :
                       tier.tier === 'medium' ? 'text-yellow-600' : 'text-red-600'
                     }`}>
-                      {tier.count}
+                      {Math.round(tier.count)}
                     </div>
                     <div className={`text-sm font-medium uppercase tracking-wide ${
                       tier.tier === 'low' ? 'text-green-600' :
