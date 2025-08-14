@@ -123,7 +123,7 @@ export default function SearchPage() {
 
   const pdfMutation = useMutation({
     mutationFn: async (riskAssessmentId: string) => {
-      const response = await fetch('/api/pdf/generate', {
+      const response = await fetch('/api/pdf-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ riskAssessmentId }),

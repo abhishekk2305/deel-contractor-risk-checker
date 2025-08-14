@@ -55,10 +55,12 @@ export const usePdfGeneration = () => {
       });
       
       if (!response.ok) {
-        throw new Error('Failed to generate PDF');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to generate PDF');
       }
       
-      return response.json();
+      const data = await response.json();
+      return { jobId: data.job_id };
     },
     onSuccess: (data) => {
       toast({

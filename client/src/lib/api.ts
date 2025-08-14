@@ -73,10 +73,10 @@ class ApiClient {
   }
 
   // PDF Reports API
-  async generatePdfReport(contractorId: string): Promise<{ jobId: string }> {
-    return this.request<{ jobId: string }>('/pdf-report', {
+  async generatePdfReport(riskAssessmentId: string): Promise<{ job_id: string }> {
+    return this.request<{ job_id: string }>('/pdf-report', {
       method: 'POST',
-      body: JSON.stringify({ contractorId }),
+      body: JSON.stringify({ riskAssessmentId }),
     });
   }
 
