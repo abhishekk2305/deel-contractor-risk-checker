@@ -1,0 +1,112 @@
+Phase 1 — Restore stability
+
+Hard reset to last green commit
+
+Identify the last commit where my preview worked without runtime overlays.
+
+git reset --hard <GOOD_SHA>
+
+git clean -fd
+
+npm install (if needed)
+
+Restart app and paste:
+
+The GOOD_SHA you reset to
+
+Output of git log -1
+
+/health JSON 200 from my preview URL
+
+Screenshot of the home page loading
+
+Lint/type/build gates
+
+Run: npm run typecheck, npm run lint, npm run build (or equivalent)
+
+Paste the outputs; all must be green.
+
+Do not proceed until Phase 1 is green and my preview renders.
+
+Phase 2 — Re-apply fixes in very small PRs, one by one
+For each item below, create a separate commit, push, and paste proof from my preview before moving to the next.
+
+A) Popular Countries logic
+
+Implement endpoint /api/countries/popular?window=7d&limit=6.
+
+UI: show counts and tooltip “Ranked by searches in last 7 days.”
+
+Commit A SHA + API JSON + UI screenshot.
+
+B) Remove duplicate nav and add breadcrumbs
+
+Single global nav; remove duplicates on country pages.
+
+Commit B SHA + screenshots.
+
+C) Admin 404 and Settings diagnostics
+
+/admin never 404; add Settings tab with diagnostics that call /health.
+
+Commit C SHA + screenshots.
+
+D) Risk Assessment “Use test data” and scoring modal
+
+Buttons for John Smith and Vladimir Putin; add “How scoring works” modal with weights/thresholds/sources.
+
+Commit D SHA + screenshots.
+
+E) PDF pipeline from UI
+
+Ensure POST /api/pdf-report → 202, poll → url.
+
+UI button enables and downloads file.
+
+Commit E SHA + 202 JSON + poll JSON + pre‑signed URL + PDF committed to /verification/sample.pdf.
+
+F) Analytics clarity
+
+Counters reflect real events; chart shows today’s actions.
+
+Commit F SHA + /api/analytics JSON + dashboard screenshot.
+
+G) Reliability/security
+
+Add error boundaries; zero React overlays.
+
+Paste browser console screenshot showing no red errors.
+
+Paste admin API response headers with Helmet/CSP/CORS and rate-limit headers.
+
+Phase 3 — Evidence bundle from my preview
+
+Record verification/demo.gif from my .replit.dev URL showing the full flow (home → search → John Smith → PDF → Putin → admin publish → analytics update).
+
+Update /verification with demo.gif and a README explaining popular-country logic and scoring formula.
+
+Paste a single message with:
+
+My preview URL
+
+/health JSON
+
+Popular countries JSON + matching UI screenshot
+
+Two risk-check JSONs
+
+PDF 202 + poll JSON + working URL + link to /verification/sample.pdf
+
+Admin screenshots (no 404) + version history
+
+/api/analytics JSON + dashboard screenshot
+
+Security headers snippet
+
+/metrics snippet
+
+The commit SHAs A–F
+
+If at any step you hit an error, stop, paste the exact error and the diff you applied, and fix before proceeding. Do not attempt large combined edits. Keep changes atomic so the preview stays green.
+
+I’ll verify after Phase 1 and again after Phase 3.

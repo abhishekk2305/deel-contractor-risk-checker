@@ -332,9 +332,9 @@ export function registerRoutes(app: Express) {
         providerInfo: result.providerInfo || {
           sanctions: {
             source: "opensanctions",
-            hits_count: result.breakdown?.sanctionsHits || 0,
-            top_matches: result.breakdown?.sanctionsMatches || [],
-            lists: result.breakdown?.sanctionsLists || []
+            hits_count: result.breakdown?.sanctions || 0,
+            top_matches: [],
+            lists: []
           },
           media: {
             source: "mock",
@@ -763,7 +763,10 @@ export function registerRoutes(app: Express) {
         updatedAt: new Date().toISOString()
       };
 
-      await analyticsService.trackEvent("rule_create", { ruleId: newRule.id, title });
+      await analyticsService.trackEvent({
+        event: "rule_create",
+        metadata: { ruleId: newRule.id, title }
+      });
       res.status(201).json(newRule);
     } catch (error) {
       logger.error({ error }, "Error creating compliance rule");
@@ -782,7 +785,10 @@ export function registerRoutes(app: Express) {
         publishedAt: new Date().toISOString()
       };
 
-      await analyticsService.trackEvent("rule_publish", { ruleId: id });
+      await analyticsService.trackEvent({
+        event: "rule_publish", 
+        metadata: { ruleId: id }
+      });
       res.json(publishedRule);
     } catch (error) {
       logger.error({ error }, "Error publishing compliance rule");
