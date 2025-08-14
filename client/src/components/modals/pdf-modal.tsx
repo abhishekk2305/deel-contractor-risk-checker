@@ -17,9 +17,10 @@ interface PdfModalProps {
   isOpen: boolean;
   onClose: () => void;
   country: Country | null;
+  riskAssessmentId?: string | null;
 }
 
-export function PdfModal({ isOpen, onClose, country }: PdfModalProps) {
+export function PdfModal({ isOpen, onClose, country, riskAssessmentId }: PdfModalProps) {
   const [jobId, setJobId] = useState<string | null>(null);
   const [reportTitle, setReportTitle] = useState('Risk Assessment Report');
   const [email, setEmail] = useState('');
@@ -28,13 +29,13 @@ export function PdfModal({ isOpen, onClose, country }: PdfModalProps) {
   const { data: reportStatus } = usePdfReportStatus(jobId);
 
   const handleGenerate = async () => {
-    if (!country) return;
+    if (!country || !riskAssessmentId) return;
 
     try {
       analytics.pdfGenerate(country.iso);
       
-      // For demo purposes, we'll use a dummy contractor ID
-      const result = await pdfMutation.mutateAsync('dummy-contractor-id');
+      // Use the actual risk assessment ID
+      const result = await pdfMutation.mutateAsync(riskAssessmentId);
       setJobId(result.jobId);
     } catch (error) {
       // Error is handled by the mutation
@@ -110,7 +111,7 @@ export function PdfModal({ isOpen, onClose, country }: PdfModalProps) {
                 </Button>
                 <Button 
                   onClick={handleGenerate}
-                  disabled={pdfMutation.isPending}
+                  disabled={pdfMutation.isPending || !riskAssessmentId}
                   className="bg-deel-secondary hover:bg-deel-secondary/90"
                 >
                   <Download className="h-4 w-4 mr-2" />

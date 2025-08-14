@@ -45,14 +45,26 @@ export const usePdfGeneration = () => {
   const { toast } = useToast();
   
   return useMutation({
-    mutationFn: (contractorId: string) => api.generatePdfReport(contractorId),
+    mutationFn: async (riskAssessmentId: string) => {
+      const response = await fetch(`/api/pdf-report`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ riskAssessmentId }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+      
+      return response.json();
+    },
     onSuccess: (data) => {
       toast({
         title: "PDF Generation Started",
         description: "Your report is being generated. You'll be notified when it's ready.",
       });
-      
-      analytics.pdfGenerate('unknown'); // We don't have country context here
     },
     onError: (error) => {
       toast({
@@ -67,7 +79,13 @@ export const usePdfGeneration = () => {
 export const usePdfReportStatus = (jobId: string | null) => {
   return useQuery({
     queryKey: ["/api/pdf-report", jobId],
-    queryFn: () => api.getPdfReportStatus(jobId!),
+    queryFn: async () => {
+      const response = await fetch(`/api/pdf-report/${jobId}`);
+      if (!response.ok) {
+        throw new Error('Failed to get PDF status');
+      }
+      return response.json();
+    },
     enabled: !!jobId,
     refetchInterval: (data) => {
       // Stop polling when the report is ready or failed

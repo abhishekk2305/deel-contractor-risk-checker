@@ -35,7 +35,7 @@ interface RiskCheckModalProps {
   isOpen: boolean;
   onClose: () => void;
   country: Country | null;
-  onSuccess?: () => void;
+  onSuccess?: (riskAssessmentId: string) => void;
 }
 
 export function RiskCheckModal({ isOpen, onClose, country, onSuccess }: RiskCheckModalProps) {
@@ -64,7 +64,7 @@ export function RiskCheckModal({ isOpen, onClose, country, onSuccess }: RiskChec
       
       if (onSuccess) {
         setTimeout(() => {
-          onSuccess();
+          onSuccess(result.id);
         }, 2000); // Show results for 2 seconds before closing
       }
     } catch (error) {

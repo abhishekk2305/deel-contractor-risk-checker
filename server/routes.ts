@@ -286,9 +286,11 @@ export function registerRoutes(app: Express) {
         }
       });
 
-      // Add provider information to the response
+      // Add provider information to the response and include the risk score ID for PDF generation
       const responseResult = {
         ...result,
+        id: riskScore.id, // Use risk score ID for PDF generation
+        contractorId: contractor.id,
         providerInfo: result.providerInfo || {
           sanctions: {
             source: "opensanctions",
@@ -334,12 +336,24 @@ export function registerRoutes(app: Express) {
         return res.status(400).json({ error: "Risk assessment ID is required" });
       }
 
-      // Get risk assessment from database
-      const [riskScore] = await db
+      // Get risk assessment from database - try by contractor ID first (backward compatibility)
+      let riskScore = await db
         .select()
         .from(riskScores)
-        .where(eq(riskScores.id, riskAssessmentId))
-        .limit(1);
+        .where(eq(riskScores.contractorId, riskAssessmentId))
+        .orderBy(desc(riskScores.createdAt))
+        .limit(1)
+        .then(rows => rows[0]);
+
+      // If not found, try by risk score ID directly
+      if (!riskScore) {
+        riskScore = await db
+          .select()
+          .from(riskScores)
+          .where(eq(riskScores.id, riskAssessmentId))
+          .limit(1)
+          .then(rows => rows[0]);
+      }
 
       if (!riskScore) {
         return res.status(404).json({ error: "Risk assessment not found" });

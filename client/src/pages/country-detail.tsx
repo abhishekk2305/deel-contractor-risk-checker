@@ -18,6 +18,7 @@ export default function CountryDetail() {
   const [, setLocation] = useLocation();
   const [showRiskModal, setShowRiskModal] = useState(false);
   const [showPdfModal, setShowPdfModal] = useState(false);
+  const [lastRiskAssessmentId, setLastRiskAssessmentId] = useState<string | null>(null);
 
   const { data: country, isLoading, error, refetch } = useCountry(iso);
 
@@ -207,7 +208,8 @@ export default function CountryDetail() {
         isOpen={showRiskModal}
         onClose={() => setShowRiskModal(false)}
         country={country}
-        onSuccess={() => {
+        onSuccess={(riskAssessmentId) => {
+          setLastRiskAssessmentId(riskAssessmentId);
           setShowRiskModal(false);
           setShowPdfModal(true);
         }}
@@ -217,6 +219,7 @@ export default function CountryDetail() {
         isOpen={showPdfModal}
         onClose={() => setShowPdfModal(false)}
         country={country}
+        riskAssessmentId={lastRiskAssessmentId}
       />
     </main>
   );
