@@ -28,6 +28,14 @@ export function PdfModal({ isOpen, onClose, country, riskAssessmentId }: PdfModa
   const pdfMutation = usePdfGeneration();
   const { data: reportStatus } = usePdfReportStatus(jobId);
 
+  // Debug logging
+  console.log('PdfModal state:', { 
+    jobId, 
+    reportStatus, 
+    riskAssessmentId, 
+    isOpen 
+  });
+
   const handleGenerate = async () => {
     if (!country || !riskAssessmentId) return;
 
@@ -45,17 +53,18 @@ export function PdfModal({ isOpen, onClose, country, riskAssessmentId }: PdfModa
   };
 
   const handleDownload = () => {
+    console.log('Download clicked', { reportStatus, country });
     if (reportStatus?.url && country) {
+      console.log('Starting download:', reportStatus.url);
       analytics.pdfDownloadSuccess(country.iso, reportStatus.size_bytes || 0);
       
-      // Create a temporary link to download the file
-      const link = document.createElement('a');
-      link.href = reportStatus.url;
-      link.download = `${country.name}-risk-assessment.pdf`;
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Try window.open first for better compatibility
+      window.open(reportStatus.url, '_blank');
+    } else {
+      console.log('Download blocked - missing data:', { 
+        hasUrl: !!reportStatus?.url, 
+        hasCountry: !!country 
+      });
     }
   };
 
