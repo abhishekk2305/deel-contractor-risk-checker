@@ -24,6 +24,11 @@ import { riskEngine } from "./services/risk-engine";
 import { pdfGenerator } from "./services/pdf-generator";
 import { externalApis } from "./services/external-apis";
 import { notificationService } from "./services/notifications";
+import { ruleTemplateService } from "./services/rule-template-service";
+import { bulkImportService } from "./services/bulk-import-service";
+import { collaborationService } from "./services/collaboration-service";
+import { externalDataService } from "./services/external-data-service";
+import { auditService } from "./services/audit-service";
 import { pdfQueue } from "./lib/redis";
 import { createChildLogger } from "./lib/logger";
 
@@ -336,6 +341,426 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/auth/logout',
     asyncHandler(async (req, res) => {
       res.json({ message: 'Logged out successfully' });
+    })
+  );
+
+  // ============ ADVANCED COMPLIANCE FEATURES ============
+
+  // Rule Templates API
+  app.get('/api/admin/rule-templates',
+    authenticateToken,
+    requireAdmin,
+    adminRateLimit,
+    asyncHandler(async (req, res) => {
+      const { category, region, search, isActive } = req.query as any;
+      const templates = await ruleTemplateService.getTemplates({
+        category,
+        region,
+        search,
+        isActive: isActive !== undefined ? isActive === 'true' : undefined,
+      });
+      res.json(templates);
+    })
+  );
+
+  app.get('/api/admin/rule-templates/categories',
+    authenticateToken,
+    requireAdmin,
+    asyncHandler(async (req, res) => {
+      const categories = await ruleTemplateService.getTemplateCategories();
+      res.json(categories);
+    })
+  );
+
+  app.get('/api/admin/rule-templates/by-category',
+    authenticateToken,
+    requireAdmin,
+    asyncHandler(async (req, res) => {
+      const templatesByCategory = await ruleTemplateService.getTemplatesByCategory();
+      res.json(templatesByCategory);
+    })
+  );
+
+  app.post('/api/admin/rule-templates',
+    authenticateToken,
+    requireAdmin,
+    adminRateLimit,
+    validateBody(z.object({
+      name: z.string().min(1),
+      description: z.string().min(1),
+      category: z.enum(['tax', 'employment', 'data_privacy', 'financial', 'regulatory']),
+      templateFields: z.array(z.object({
+        name: z.string(),
+        label: z.string(),
+        type: z.enum(['text', 'number', 'date', 'select', 'boolean', 'textarea']),
+        required: z.boolean(),
+        options: z.array(z.string()).optional(),
+        defaultValue: z.any().optional(),
+        validation: z.object({
+          min: z.number().optional(),
+          max: z.number().optional(),
+          pattern: z.string().optional(),
+        }).optional(),
+      })),
+      defaultSeverity: z.number().min(1).max(10).default(5),
+      applicableRegions: z.array(z.string()).default([]),
+      sourceType: z.enum(['internal', 'legal_framework', 'best_practice']).default('internal'),
+      tags: z.array(z.string()).default([]),
+    })),
+    asyncHandler(async (req: AuthenticatedRequest, res) => {
+      const template = await ruleTemplateService.createTemplate({
+        ...req.body,
+        createdBy: req.user!.id,
+      });
+      
+      // Audit log
+      await auditService.createAuditEntry({
+        actor: req.user!.id,
+        actorRole: req.user!.role,
+        action: 'create',
+        entity: 'rule_template',
+        entityId: template.id,
+        newValues: template,
+        changesSummary: `Created rule template: ${template.name}`,
+        riskLevel: 'low',
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent') || '',
+        sessionId: req.sessionID,
+      });
+
+      res.status(201).json(template);
+    })
+  );
+
+  app.post('/api/admin/rule-templates/:id/create-rule',
+    authenticateToken,
+    requireAdmin,
+    adminRateLimit,
+    validateParams(z.object({ id: z.string().uuid() })),
+    validateBody(z.object({
+      countryId: z.string().uuid(),
+      fieldValues: z.record(z.any()),
+    })),
+    asyncHandler(async (req: AuthenticatedRequest, res) => {
+      const rule = await ruleTemplateService.createRuleFromTemplate({
+        templateId: req.params.id,
+        countryId: req.body.countryId,
+        fieldValues: req.body.fieldValues,
+        createdBy: req.user!.id,
+      });
+
+      res.status(201).json(rule);
+    })
+  );
+
+  // Bulk Import API
+  app.get('/api/admin/bulk-imports',
+    authenticateToken,
+    requireAdmin,
+    asyncHandler(async (req: AuthenticatedRequest, res) => {
+      const jobs = await bulkImportService.getImportJobs(req.user!.id);
+      res.json(jobs);
+    })
+  );
+
+  app.get('/api/admin/bulk-imports/template/:type',
+    authenticateToken,
+    requireAdmin,
+    validateParams(z.object({ type: z.enum(['rules', 'templates']) })),
+    asyncHandler(async (req, res) => {
+      const template = await bulkImportService.getImportTemplate(req.params.type as any);
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${req.params.type}-template.csv"`);
+      res.send(template);
+    })
+  );
+
+  app.post('/api/admin/bulk-imports',
+    authenticateToken,
+    requireAdmin,
+    adminRateLimit,
+    validateBody(z.object({
+      fileName: z.string(),
+      fileSize: z.number(),
+      totalRows: z.number(),
+      importType: z.enum(['rules', 'templates', 'countries']),
+      csvContent: z.string(),
+    })),
+    asyncHandler(async (req: AuthenticatedRequest, res) => {
+      const job = await bulkImportService.createImportJob({
+        fileName: req.body.fileName,
+        fileSize: req.body.fileSize,
+        totalRows: req.body.totalRows,
+        importType: req.body.importType,
+        uploadedBy: req.user!.id,
+      });
+
+      // Process import in background
+      if (req.body.importType === 'rules') {
+        bulkImportService.processRulesImport(job.id, req.body.csvContent).catch(err => {
+          logger.error({ error: err, jobId: job.id }, 'Background rules import failed');
+        });
+      } else if (req.body.importType === 'templates') {
+        bulkImportService.processTemplatesImport(job.id, req.body.csvContent).catch(err => {
+          logger.error({ error: err, jobId: job.id }, 'Background templates import failed');
+        });
+      }
+
+      res.status(201).json(job);
+    })
+  );
+
+  app.get('/api/admin/bulk-imports/:id',
+    authenticateToken,
+    requireAdmin,
+    validateParams(z.object({ id: z.string().uuid() })),
+    asyncHandler(async (req, res) => {
+      const job = await bulkImportService.getImportJob(req.params.id);
+      if (!job) {
+        throw new NotFoundError('Import job not found');
+      }
+      res.json(job);
+    })
+  );
+
+  // Collaboration API
+  app.get('/api/admin/collaboration/sessions',
+    authenticateToken,
+    requireAdmin,
+    asyncHandler(async (req: AuthenticatedRequest, res) => {
+      const { status, entityType, participantId } = req.query as any;
+      const sessions = await collaborationService.getSessions({
+        status,
+        entityType,
+        participantId: participantId || req.user!.id,
+      });
+      res.json(sessions);
+    })
+  );
+
+  app.post('/api/admin/collaboration/sessions',
+    authenticateToken,
+    requireAdmin,
+    adminRateLimit,
+    validateBody(z.object({
+      entityType: z.enum(['rule', 'template', 'assessment']),
+      entityId: z.string().uuid(),
+      sessionTitle: z.string().min(1),
+      description: z.string().optional(),
+      participants: z.array(z.string().uuid()).default([]),
+    })),
+    asyncHandler(async (req: AuthenticatedRequest, res) => {
+      const session = await collaborationService.createSession({
+        ...req.body,
+        moderatorId: req.user!.id,
+      });
+      res.status(201).json(session);
+    })
+  );
+
+  app.get('/api/admin/collaboration/sessions/:id',
+    authenticateToken,
+    requireAdmin,
+    validateParams(z.object({ id: z.string().uuid() })),
+    asyncHandler(async (req: AuthenticatedRequest, res) => {
+      const session = await collaborationService.getSession(req.params.id);
+      if (!session) {
+        throw new NotFoundError('Collaboration session not found');
+      }
+      res.json(session);
+    })
+  );
+
+  app.get('/api/admin/collaboration/sessions/:id/messages',
+    authenticateToken,
+    requireAdmin,
+    validateParams(z.object({ id: z.string().uuid() })),
+    asyncHandler(async (req, res) => {
+      const { messageType, isResolved, limit, offset } = req.query as any;
+      const messages = await collaborationService.getMessages({
+        sessionId: req.params.id,
+        messageType,
+        isResolved: isResolved !== undefined ? isResolved === 'true' : undefined,
+      }, limit || 50, offset || 0);
+      res.json(messages);
+    })
+  );
+
+  app.post('/api/admin/collaboration/sessions/:id/messages',
+    authenticateToken,
+    requireAdmin,
+    adminRateLimit,
+    validateParams(z.object({ id: z.string().uuid() })),
+    validateBody(z.object({
+      messageType: z.enum(['comment', 'suggestion', 'approval', 'rejection']),
+      content: z.string().min(1),
+      metadata: z.record(z.any()).optional(),
+    })),
+    asyncHandler(async (req: AuthenticatedRequest, res) => {
+      const message = await collaborationService.addMessage({
+        sessionId: req.params.id,
+        userId: req.user!.id,
+        messageType: req.body.messageType,
+        content: req.body.content,
+        metadata: req.body.metadata || {},
+      });
+      res.status(201).json(message);
+    })
+  );
+
+  // External Data Sources API
+  app.get('/api/admin/external-data-sources',
+    authenticateToken,
+    requireAdmin,
+    asyncHandler(async (req, res) => {
+      const { provider, country, isActive } = req.query as any;
+      const sources = await externalDataService.getDataSources({
+        provider,
+        country,
+        isActive: isActive !== undefined ? isActive === 'true' : undefined,
+      });
+      res.json(sources);
+    })
+  );
+
+  app.post('/api/admin/external-data-sources/sync',
+    authenticateToken,
+    requireAdmin,
+    adminRateLimit,
+    asyncHandler(async (req, res) => {
+      const result = await externalDataService.syncAllDataSources();
+      res.json(result);
+    })
+  );
+
+  app.get('/api/risk-data/:country',
+    optionalAuth,
+    validateParams(z.object({ country: z.string().length(2) })),
+    asyncHandler(async (req, res) => {
+      const { dataTypes } = req.query as any;
+      const riskData = await externalDataService.getRiskData(
+        req.params.country,
+        dataTypes ? dataTypes.split(',') : undefined
+      );
+      res.json(riskData);
+    })
+  );
+
+  // Audit Trail API
+  app.get('/api/admin/audit-trail',
+    authenticateToken,
+    requireAdmin,
+    asyncHandler(async (req, res) => {
+      const { 
+        actor, action, entity, entityId, riskLevel, 
+        approvalStatus, fromDate, toDate, requiresApproval,
+        limit, offset 
+      } = req.query as any;
+      
+      const result = await auditService.getAuditTrail({
+        actor,
+        action,
+        entity,
+        entityId,
+        riskLevel,
+        approvalStatus,
+        fromDate: fromDate ? new Date(fromDate) : undefined,
+        toDate: toDate ? new Date(toDate) : undefined,
+        requiresApproval: requiresApproval !== undefined ? requiresApproval === 'true' : undefined,
+      }, limit || 100, offset || 0);
+      
+      res.json(result);
+    })
+  );
+
+  app.get('/api/admin/audit-trail/statistics',
+    authenticateToken,
+    requireAdmin,
+    asyncHandler(async (req, res) => {
+      const { fromDate, toDate } = req.query as any;
+      const stats = await auditService.getAuditStatistics(
+        fromDate ? new Date(fromDate) : undefined,
+        toDate ? new Date(toDate) : undefined
+      );
+      res.json(stats);
+    })
+  );
+
+  app.post('/api/admin/audit-trail/:id/approve',
+    authenticateToken,
+    requireAdmin,
+    adminRateLimit,
+    validateParams(z.object({ id: z.string().uuid() })),
+    asyncHandler(async (req: AuthenticatedRequest, res) => {
+      const approved = await auditService.approveAuditEntry(req.params.id, req.user!.id);
+      res.json(approved);
+    })
+  );
+
+  app.post('/api/admin/audit-trail/:id/reject',
+    authenticateToken,
+    requireAdmin,
+    adminRateLimit,
+    validateParams(z.object({ id: z.string().uuid() })),
+    validateBody(z.object({
+      reason: z.string().min(1),
+    })),
+    asyncHandler(async (req: AuthenticatedRequest, res) => {
+      const rejected = await auditService.rejectAuditEntry(
+        req.params.id, 
+        req.user!.id, 
+        req.body.reason
+      );
+      res.json(rejected);
+    })
+  );
+
+  // Approval Workflow API
+  app.get('/api/admin/approval-workflows',
+    authenticateToken,
+    requireAdmin,
+    asyncHandler(async (req, res) => {
+      const { entityType, isActive } = req.query as any;
+      const workflows = await auditService.getWorkflows(
+        entityType,
+        isActive !== undefined ? isActive === 'true' : undefined
+      );
+      res.json(workflows);
+    })
+  );
+
+  app.get('/api/admin/approval-requests',
+    authenticateToken,
+    requireAdmin,
+    asyncHandler(async (req: AuthenticatedRequest, res) => {
+      const { status, entityType, workflowId } = req.query as any;
+      const requests = await auditService.getApprovalRequests({
+        status,
+        entityType,
+        requestedBy: req.user!.role === 'admin' ? undefined : req.user!.id,
+        workflowId,
+      });
+      res.json(requests);
+    })
+  );
+
+  app.post('/api/admin/approval-requests/:id/process',
+    authenticateToken,
+    requireAdmin,
+    adminRateLimit,
+    validateParams(z.object({ id: z.string().uuid() })),
+    validateBody(z.object({
+      action: z.enum(['approve', 'reject']),
+      comments: z.string().optional(),
+    })),
+    asyncHandler(async (req: AuthenticatedRequest, res) => {
+      const processed = await auditService.processApprovalRequest(
+        req.params.id,
+        req.user!.id,
+        req.body.action,
+        req.body.comments
+      );
+      res.json(processed);
     })
   );
 

@@ -96,8 +96,156 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
-  role: text("role").notNull().default("user"), // 'admin' | 'user'
+  role: text("role").notNull().default("user"), // 'admin' | 'user' | 'compliance_manager' | 'risk_analyst'
+  permissions: jsonb("permissions").default("[]"), // Array of specific permissions
+  department: text("department"),
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  lastLoginAt: timestamp("last_login_at"),
+});
+
+// Rule templates table for advanced compliance templates
+export const ruleTemplates = pgTable("rule_templates", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  category: text("category").notNull(), // 'tax', 'employment', 'data_privacy', 'financial', 'regulatory'
+  templateFields: jsonb("template_fields").notNull(), // JSON schema for dynamic fields
+  defaultSeverity: integer("default_severity").notNull().default(5),
+  applicableRegions: jsonb("applicable_regions").default("[]"), // Array of region codes
+  sourceType: text("source_type").notNull(), // 'internal', 'legal_framework', 'best_practice'
+  tags: jsonb("tags").default("[]"),
+  isActive: boolean("is_active").default(true),
+  createdBy: uuid("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+});
+
+// Bulk import jobs for compliance rules
+export const bulkImportJobs = pgTable("bulk_import_jobs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  fileName: text("file_name").notNull(),
+  fileSize: integer("file_size").notNull(),
+  totalRows: integer("total_rows").notNull(),
+  processedRows: integer("processed_rows").default(0),
+  successfulRows: integer("successful_rows").default(0),
+  failedRows: integer("failed_rows").default(0),
+  status: text("status").notNull().default("pending"), // 'pending', 'processing', 'completed', 'failed', 'cancelled'
+  validationErrors: jsonb("validation_errors").default("[]"),
+  importType: text("import_type").notNull(), // 'rules', 'templates', 'countries'
+  uploadedBy: uuid("uploaded_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  completedAt: timestamp("completed_at"),
+});
+
+// Real-time collaboration sessions
+export const collaborationSessions = pgTable("collaboration_sessions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  entityType: text("entity_type").notNull(), // 'rule', 'template', 'assessment'
+  entityId: uuid("entity_id").notNull(),
+  sessionTitle: text("session_title").notNull(),
+  description: text("description"),
+  status: text("status").notNull().default("active"), // 'active', 'concluded', 'archived'
+  participants: jsonb("participants").notNull().default("[]"), // Array of user IDs
+  moderatorId: uuid("moderator_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  lastActivityAt: timestamp("last_activity_at").notNull().default(sql`now()`),
+});
+
+// Collaboration messages/comments
+export const collaborationMessages = pgTable("collaboration_messages", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: uuid("session_id").references(() => collaborationSessions.id).notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  messageType: text("message_type").notNull(), // 'comment', 'suggestion', 'approval', 'rejection'
+  content: text("content").notNull(),
+  metadata: jsonb("metadata").default("{}"), // Additional data like field references, attachments
+  isResolved: boolean("is_resolved").default(false),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+// External risk data sources
+export const externalDataSources = pgTable("external_data_sources", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  provider: text("provider").notNull(), // 'world_bank', 'oecd', 'local_regulatory', 'comply_advantage', 'news_api'
+  apiEndpoint: text("api_endpoint").notNull(),
+  dataType: text("data_type").notNull(), // 'economic_indicators', 'regulatory_updates', 'sanctions', 'political_stability'
+  country: varchar("country", { length: 3 }), // ISO country code if country-specific
+  refreshFrequency: text("refresh_frequency").notNull(), // 'daily', 'weekly', 'monthly', 'quarterly'
+  isActive: boolean("is_active").default(true),
+  lastSyncAt: timestamp("last_sync_at"),
+  lastSyncStatus: text("last_sync_status"), // 'success', 'failed', 'partial'
+  apiConfig: jsonb("api_config").notNull(), // API keys, rate limits, etc.
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+// Enhanced risk data cache
+export const riskDataCache = pgTable("risk_data_cache", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  dataSourceId: uuid("data_source_id").references(() => externalDataSources.id).notNull(),
+  country: varchar("country", { length: 3 }).references(() => countries.iso),
+  dataKey: text("data_key").notNull(), // Unique key for the data type
+  data: jsonb("data").notNull(),
+  score: integer("score"), // Normalized risk score 0-100
+  confidence: integer("confidence").default(100), // Confidence level 0-100
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+// Enhanced audit logs with approval workflows
+export const auditTrails = pgTable("audit_trails", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  actor: uuid("actor").references(() => users.id).notNull(),
+  actorRole: text("actor_role").notNull(),
+  action: text("action").notNull(), // 'create', 'update', 'delete', 'publish', 'approve', 'reject'
+  entity: text("entity").notNull(),
+  entityId: uuid("entity_id").notNull(),
+  oldValues: jsonb("old_values"),
+  newValues: jsonb("new_values"),
+  changesSummary: text("changes_summary"),
+  riskLevel: text("risk_level").notNull(), // 'low', 'medium', 'high', 'critical'
+  requiresApproval: boolean("requires_approval").default(false),
+  approvalStatus: text("approval_status"), // 'pending', 'approved', 'rejected'
+  approvedBy: uuid("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  rejectionReason: text("rejection_reason"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  sessionId: text("session_id"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+// Approval workflows
+export const approvalWorkflows = pgTable("approval_workflows", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  entityType: text("entity_type").notNull(), // 'rule', 'template', 'bulk_import'
+  triggerConditions: jsonb("trigger_conditions").notNull(), // Conditions that trigger this workflow
+  approvalSteps: jsonb("approval_steps").notNull(), // Ordered list of approval steps
+  isActive: boolean("is_active").default(true),
+  createdBy: uuid("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+});
+
+// Approval requests
+export const approvalRequests = pgTable("approval_requests", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  workflowId: uuid("workflow_id").references(() => approvalWorkflows.id).notNull(),
+  entityType: text("entity_type").notNull(),
+  entityId: uuid("entity_id").notNull(),
+  requestedBy: uuid("requested_by").references(() => users.id).notNull(),
+  currentStep: integer("current_step").default(0),
+  status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected', 'cancelled'
+  approvalHistory: jsonb("approval_history").default("[]"),
+  requestData: jsonb("request_data").notNull(), // The actual data/changes being requested
+  priority: text("priority").default("medium"), // 'low', 'medium', 'high', 'urgent'
+  deadline: timestamp("deadline"),
+  comments: text("comments"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
 });
 
 // Create insert schemas
@@ -144,6 +292,63 @@ export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
+  lastLoginAt: true,
+});
+
+// New table insert schemas
+export const insertRuleTemplateSchema = createInsertSchema(ruleTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertBulkImportJobSchema = createInsertSchema(bulkImportJobs).omit({
+  id: true,
+  createdAt: true,
+  completedAt: true,
+  processedRows: true,
+  successfulRows: true,
+  failedRows: true,
+});
+
+export const insertCollaborationSessionSchema = createInsertSchema(collaborationSessions).omit({
+  id: true,
+  createdAt: true,
+  lastActivityAt: true,
+});
+
+export const insertCollaborationMessageSchema = createInsertSchema(collaborationMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertExternalDataSourceSchema = createInsertSchema(externalDataSources).omit({
+  id: true,
+  createdAt: true,
+  lastSyncAt: true,
+});
+
+export const insertRiskDataCacheSchema = createInsertSchema(riskDataCache).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAuditTrailSchema = createInsertSchema(auditTrails).omit({
+  id: true,
+  createdAt: true,
+  approvedAt: true,
+});
+
+export const insertApprovalWorkflowSchema = createInsertSchema(approvalWorkflows).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertApprovalRequestSchema = createInsertSchema(approvalRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 // Risk check request schema
@@ -182,6 +387,33 @@ export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export type RuleTemplate = typeof ruleTemplates.$inferSelect;
+export type InsertRuleTemplate = z.infer<typeof insertRuleTemplateSchema>;
+
+export type BulkImportJob = typeof bulkImportJobs.$inferSelect;
+export type InsertBulkImportJob = z.infer<typeof insertBulkImportJobSchema>;
+
+export type CollaborationSession = typeof collaborationSessions.$inferSelect;
+export type InsertCollaborationSession = z.infer<typeof insertCollaborationSessionSchema>;
+
+export type CollaborationMessage = typeof collaborationMessages.$inferSelect;
+export type InsertCollaborationMessage = z.infer<typeof insertCollaborationMessageSchema>;
+
+export type ExternalDataSource = typeof externalDataSources.$inferSelect;
+export type InsertExternalDataSource = z.infer<typeof insertExternalDataSourceSchema>;
+
+export type RiskDataCache = typeof riskDataCache.$inferSelect;
+export type InsertRiskDataCache = z.infer<typeof insertRiskDataCacheSchema>;
+
+export type AuditTrail = typeof auditTrails.$inferSelect;
+export type InsertAuditTrail = z.infer<typeof insertAuditTrailSchema>;
+
+export type ApprovalWorkflow = typeof approvalWorkflows.$inferSelect;
+export type InsertApprovalWorkflow = z.infer<typeof insertApprovalWorkflowSchema>;
+
+export type ApprovalRequest = typeof approvalRequests.$inferSelect;
+export type InsertApprovalRequest = z.infer<typeof insertApprovalRequestSchema>;
 
 export type RiskCheckRequest = z.infer<typeof riskCheckRequestSchema>;
 
