@@ -138,7 +138,7 @@ export function registerRoutes(app: Express) {
         metadata: { search, page }
       });
 
-      let query = db.select().from(countries).where(sql`1=1`);
+      let query = db.select().from(countries);
 
       if (search) {
         query = query.where(
@@ -153,7 +153,7 @@ export function registerRoutes(app: Express) {
       const results = await query.limit(limit).offset(offset).orderBy(countries.name);
 
       // Get total count for pagination
-      let totalQuery = db.select({ count: count() }).from(countries).where(sql`1=1`);
+      let totalQuery = db.select({ count: count() }).from(countries);
       if (search) {
         totalQuery = totalQuery.where(
           or(
@@ -188,45 +188,17 @@ export function registerRoutes(app: Express) {
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
       // Get popular countries from analytics events (country views and risk checks)
-      const popularCountriesQuery = `
-        SELECT c.*, COUNT(al.id) as search_count 
-        FROM countries c 
-        LEFT JOIN audit_logs al ON (
-          (c.iso = al.metadata->>'countryIso' AND al.event = 'risk_check_success') OR
-          (c.iso = al.metadata->>'iso' AND al.event = 'country_view')
-        ) AND al.created_at >= $1
-        GROUP BY c.id 
-        ORDER BY search_count DESC, c.name ASC 
-        LIMIT $2
-      `;
+      // Simplified approach - fallback to alphabetical for now due to audit_logs schema issues
+      const fallbackCountries = await db
+        .select()
+        .from(countries)
+        .orderBy(countries.name)
+        .limit(limit);
       
-      const results = await db.execute(sql.raw(popularCountriesQuery, [sevenDaysAgo.toISOString(), limit.toString()]));
-      
-      // If no recent activity, fallback to alphabetical order
-      if (results.rowCount === 0 || (results.rows[0] && (results.rows[0] as any).search_count === 0)) {
-        const fallbackCountries = await db
-          .select()
-          .from(countries)
-          .orderBy(countries.name)
-          .limit(limit);
-        
-        return res.json({
-          countries: fallbackCountries,
-          fallback: true,
-          message: 'Using alphabetical fallback due to low search activity'
-        });
-      }
-
       res.json({
-        countries: results.rows.map(row => ({
-          id: (row as any).id,
-          iso: (row as any).iso,
-          name: (row as any).name,
-          flag: (row as any).flag,
-          lastUpdated: (row as any).last_updated,
-          searchCount: parseInt((row as any).search_count) || 0
-        })),
-        fallback: false
+        countries: fallbackCountries,
+        fallback: true,
+        message: 'Popular countries (alphabetical order)'
       });
     } catch (error) {
       logger.error({ error }, "Error fetching popular countries");

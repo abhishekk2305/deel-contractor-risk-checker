@@ -1,0 +1,86 @@
+Stop status reports. My preview still has the same errors. Either fix the actual preview I see or roll back and push a working commit that does. Deliver the following within one update. Do not reply without these exact artifacts.
+
+Non‑negotiable acceptance package from MY preview
+
+Live screen recording from my preview URL
+
+One GIF (2–3 min) recorded from my .replit.dev URL showing:
+a) Home: Popular Countries with counts and tooltip “Ranked by searches in last 7 days”
+b) Search “Côte” and “Cote” → Côte d’Ivoire appears
+c) Risk Assessment: click “Use test data” → John Smith (US) → result renders; open “How scoring works”; click Generate PDF → auto-download opens the file
+d) Risk Assessment: “Use test data” → Vladimir Putin (RU) → result renders with sanctions hits
+e) Admin: open without 404; create → edit → publish a rule; Version history shows the new version
+f) Analytics: counters increment and chart updates after the above actions
+
+Save at verification/demo.gif and link it.
+
+Side-by-side screenshots (before/after) from my preview URL
+
+Home Popular Countries card (with counts)
+
+Admin page (no 404, rule list visible)
+
+Risk result page with the scoring modal open
+
+PDF success toast and a browser tab downloading the PDF
+
+Raw JSON from the same run
+Paste the exact responses you triggered during the GIF:
+
+GET /health
+
+GET /api/analytics
+
+GET /api/countries/popular?window=7d&limit=6
+
+GET /api/countries?query=Côte and ?query=Cote
+
+POST /api/risk-check (John Smith) full JSON
+
+POST /api/risk-check (Vladimir Putin) full JSON
+
+POST /api/pdf-report → 202 {job_id}
+
+GET /api/pdf-report/:job_id → {url,size_bytes,expires_at}
+
+Include the two pre-signed URLs; one must match the PDF you add to /verification.
+
+Working PDF committed
+
+Save the exact file you downloaded in the GIF as verification/sample.pdf and link it.
+
+Fixes visible in my preview (commit)
+
+Push code so my preview shows:
+
+Popular Countries ranked by last 7 days searches with counts and tooltip
+
+No duplicate nav; clean breadcrumbs
+
+Admin never 404; Settings has diagnostics (build SHA, ruleset version, DB/Redis/S3/providers)
+
+“Use test data” buttons on the assessment form
+
+“How scoring works” modal with weights, thresholds, sources; same info in the PDF footer
+
+Zero React runtime overlays
+
+Paste the commit SHA and list of files changed.
+
+If you cannot produce the above from MY preview:
+
+Roll back to the last working commit, push, restart, and explain root cause (e.g., edits running in a hidden tab/not committed). Then complete the acceptance package.
+
+Important: Do not respond again with summaries. Only respond with:
+
+Links to verification/demo.gif and verification/sample.pdf
+
+The side-by-side screenshots
+
+The raw JSON blob
+
+The commit SHA
+
+A one-line confirmation that I can refresh the preview and see the same behavior
+
+I will refresh and verify. If any step fails, paste the error and the code diff you applied to fix it.
