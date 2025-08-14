@@ -29,12 +29,18 @@ interface Country {
   lastUpdated: string;
 }
 
+interface TopRisk {
+  title: string;
+  description: string;
+  severity: 'low' | 'medium' | 'high';
+}
+
 interface RiskAssessment {
   id: string;
   contractorId: string;
   overallScore: number;
   riskTier: 'low' | 'medium' | 'high';
-  topRisks: string[];
+  topRisks: TopRisk[];
   recommendations: string[];
   penaltyRange: string;
   generatedAt: string;
@@ -369,12 +375,37 @@ export default function SearchPage() {
                         <div>
                           <h4 className="font-semibold text-gray-900 mb-2">Top Risk Factors:</h4>
                           <ul className="space-y-1">
-                            {riskResult.topRisks.map((risk, index) => (
-                              <li key={index} className="flex items-start text-sm">
-                                <AlertTriangle className="w-4 h-4 mr-2 mt-0.5 text-orange-500" />
-                                {risk}
-                              </li>
-                            ))}
+                            {(() => {
+                              // Debug logging and normalization
+                              console.debug('riskResult payload', JSON.stringify(riskResult, null, 2));
+                              
+                              const topRisksRaw = riskResult?.topRisks ?? [];
+                              const topRisks = Array.isArray(topRisksRaw) ? topRisksRaw : [topRisksRaw];
+                              const safeTopRisks: TopRisk[] = topRisks
+                                .filter(Boolean)
+                                .map(r => typeof r === 'string'
+                                  ? { title: r, description: '', severity: 'low' as const }
+                                  : r);
+                              
+                              return safeTopRisks.map((risk, index) => (
+                                <li key={risk.title || index} className="flex items-start text-sm">
+                                  <AlertTriangle className="w-4 h-4 mr-2 mt-0.5 text-orange-500" />
+                                  <div>
+                                    <strong>{risk.title}</strong>
+                                    {risk.description ? ` — ${risk.description}` : ''}
+                                    {risk.severity && (
+                                      <Badge className={`ml-2 ${
+                                        risk.severity === 'low' ? 'bg-green-100 text-green-800' :
+                                        risk.severity === 'medium' ? 'bg-amber-100 text-amber-800' :
+                                        'bg-red-100 text-red-800'
+                                      }`}>
+                                        {risk.severity.toUpperCase()}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </li>
+                              ));
+                            })()}
                           </ul>
                         </div>
 
@@ -383,12 +414,17 @@ export default function SearchPage() {
                         <div>
                           <h4 className="font-semibold text-gray-900 mb-2">Recommendations:</h4>
                           <ul className="space-y-1">
-                            {riskResult.recommendations.map((rec, index) => (
-                              <li key={index} className="flex items-start text-sm">
-                                <CheckCircle className="w-4 h-4 mr-2 mt-0.5 text-green-500" />
-                                {rec}
-                              </li>
-                            ))}
+                            {(() => {
+                              const recsRaw = riskResult?.recommendations ?? [];
+                              const recommendations = Array.isArray(recsRaw) ? recsRaw : [recsRaw];
+                              
+                              return recommendations.map((rec, index) => (
+                                <li key={index} className="flex items-start text-sm">
+                                  <CheckCircle className="w-4 h-4 mr-2 mt-0.5 text-green-500" />
+                                  {typeof rec === 'string' ? rec : rec?.text || JSON.stringify(rec)}
+                                </li>
+                              ));
+                            })()}
                           </ul>
                         </div>
 

@@ -1,0 +1,80 @@
+The runtime error persists after clicking Start Risk Assessment:
+Objects are not valid as a React child (object with keys {title, description, severity})
+
+Please fix with the following exact steps and show proofs:
+
+Log the exact payload reaching the result component
+
+In the result component that renders top risks/recommendations (e.g., client/components/RiskResult.tsx or wherever the error originates), add:
+console.debug('riskResult payload', JSON.stringify(result, null, 2));
+
+Trigger the error again, then paste the logged JSON in full. I need to see the exact shape of result.topRisks and result.recommendations.
+
+Normalize BEFORE render
+
+In the component, immediately normalize:
+const topRisksRaw = result?.topRisks ?? [];
+const topRisks = Array.isArray(topRisksRaw) ? topRisksRaw : [topRisksRaw];
+const recsRaw = result?.recommendations ?? [];
+const recommendations = Array.isArray(recsRaw) ? recsRaw : [recsRaw];
+
+Ensure each element is a plain string or an object you map over:
+type TopRisk = { title: string; description: string; severity: 'low'|'medium'|'high' };
+const safeTopRisks: TopRisk[] = topRisks
+.filter(Boolean)
+.map(r => typeof r === 'string'
+? { title: r, description: '', severity: 'low' }
+: r);
+
+Render by mapping; never render raw objects
+
+Replace any JSX like {result.topRisks} or {result.recommendations} with:
+
+<ul> {safeTopRisks.map((t, idx) => ( <li key={t.title || idx}> <strong>{t.title}</strong>{t.description ? ` — ${t.description}` : ''} <Badge>{t.severity}</Badge> </li> ))} </ul> <ul> {recommendations.map((r, i) => <li key={i}>{typeof r === 'string' ? r : r?.text || JSON.stringify(r)}</li>)} </ul>
+Enforce API contract at the server
+
+In POST /api/risk-check, guarantee arrays:
+
+topRisks must always be TopRisk[]
+
+recommendations must always be string[]
+
+If any path returns a single object, wrap it in an array before sending:
+topRisks = Array.isArray(topRisks) ? topRisks : [topRisks].filter(Boolean);
+
+Add a narrow try/catch fallback render
+
+Wrap the section with an error boundary or inline try/catch render guard so one bad field doesn’t crash the whole page:
+{Array.isArray(safeTopRisks) && safeTopRisks.length > 0 && (...)}
+
+Prove with two runs
+
+Run assessment A: John Smith (US) — should render with low/no sanctions
+
+Run assessment B: Vladimir Putin (RU) — should render with sanctions hits
+
+Paste:
+
+The console.debug JSON payloads for both runs
+
+Screenshots of the rendered lists (no overlay)
+
+The full result JSON from the API for both calls
+
+Don’t suppress the overlay
+
+Do not disable the Vite overlay; fix the root cause.
+
+If the error still appears after this change, paste:
+
+The exact file path and line number where the render happens (stack trace)
+
+The component code snippet around where it renders topRisks/recommendations
+
+The API handler snippet that constructs result.topRisks and result.recommendations
+
+Once this renders without error, also verify:
+
+“Download PDF” still works from the result view and produces a file
+
+“How scoring works” modal opens and lists weights, thresholds, sources, ruleset_version
