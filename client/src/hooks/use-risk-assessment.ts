@@ -84,14 +84,22 @@ export const usePdfReportStatus = (jobId: string | null) => {
     queryFn: async () => {
       const response = await fetch(`/api/pdf-report/${jobId}`);
       if (!response.ok) {
+        if (response.status === 202) {
+          // Still processing, return pending status
+          return { status: 'pending' };
+        }
         throw new Error('Failed to get PDF status');
       }
       return response.json();
     },
     enabled: !!jobId,
-    refetchInterval: (queryData) => {
-      // Stop polling when the report is ready or failed
-      return (queryData as any)?.status === 'completed' || (queryData as any)?.status === 'failed' ? false : 2000;
+    refetchInterval: (data) => {
+      // If we have URL (200 response), stop polling, otherwise keep polling
+      if (data?.url) {
+        return false;
+      }
+      // Keep polling if still pending or processing
+      return 2000;
     },
   });
 };

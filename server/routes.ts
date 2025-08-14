@@ -226,19 +226,24 @@ export function registerRoutes(app: Express) {
 
       // Get country details for popular countries
       const popularCountryNames = topCountriesData.slice(0, limit).map(tc => tc.country);
-      const countriesWithCounts = await db
-        .select()
-        .from(countries)
-        .where(sql`${countries.name} = ANY(${popularCountryNames})`)
-        .then(countryRows => 
-          countryRows.map(country => {
-            const countData = topCountriesData.find(tc => tc.country === country.name);
-            return {
-              ...country,
-              searchCount: countData?.count || 0
-            };
-          })
-        );
+      const countriesWithCounts = [];
+      
+      for (const countryName of popularCountryNames) {
+        const countryRows = await db
+          .select()
+          .from(countries)
+          .where(eq(countries.name, countryName))
+          .limit(1);
+          
+        if (countryRows.length > 0) {
+          const country = countryRows[0];
+          const countData = topCountriesData.find(tc => tc.country === country.name);
+          countriesWithCounts.push({
+            ...country,
+            searchCount: countData?.count || 0
+          });
+        }
+      }
 
       // Sort by search count descending
       countriesWithCounts.sort((a, b) => b.searchCount - a.searchCount);
@@ -497,7 +502,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  // Get PDF job status - standardized to /api/pdf-report/:id
+  // GET /api/pdf-report/:id → 200 { url, size_bytes, expires_at } when ready; 202 { status:"pending" } otherwise
   app.get("/api/pdf-report/:id", async (req, res) => {
     try {
       const { id } = req.params;
@@ -520,7 +525,25 @@ export function registerRoutes(app: Express) {
         });
       }
 
-      res.json(status);
+      // Contract: Return 200 with {url, size_bytes, expires_at} when ready
+      if (status.status === 'completed' && status.url) {
+        return res.status(200).json({
+          url: status.url,
+          size_bytes: status.sizeBytes || 0,
+          expires_at: status.expiresAt || new Date(Date.now() + 5 * 60 * 1000).toISOString()
+        });
+      }
+      
+      // Contract: Return 202 with {status:"pending"} when still processing
+      if (status.status === 'failed') {
+        return res.status(500).json({
+          status: 'failed',
+          error: status.error || 'PDF generation failed'
+        });
+      }
+
+      // Default: pending
+      res.status(202).json({ status: "pending" });
     } catch (error) {
       logger.error({ error }, 'Failed to get PDF job status');
       res.status(500).json({ error: "Failed to get job status" });

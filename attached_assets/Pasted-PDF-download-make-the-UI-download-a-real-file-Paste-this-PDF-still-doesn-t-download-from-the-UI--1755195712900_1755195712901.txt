@@ -1,0 +1,86 @@
+PDF download: make the UI download a real file
+Paste this:
+
+PDF still doesn’t download from the UI. Fix end-to-end and post live proofs.
+
+Backend
+
+Create endpoint contract:
+
+POST /api/pdf-report → 202 { job_id }
+
+GET /api/pdf-report/:id → 200 { url, size_bytes, expires_at } when ready; 202 { status:"pending" } otherwise
+
+Ensure the worker renders with Puppeteer flags:
+
+launch args: ['--no-sandbox', '--disable-setuid-sandbox']
+
+30s timeout; log render time
+
+S3 permissions:
+
+Confirm envs: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, AWS_S3_BUCKET
+
+IAM policy allows s3:PutObject and s3:GetObject on arn:aws:s3:::BUCKET/*
+
+Return a pre-signed GET URL valid ≥ 5 minutes.
+
+Frontend
+
+Generate PDF button should:
+
+Disable during generation and show progress text
+
+Poll GET /api/pdf-report/:id every 2s
+
+When url is returned, auto-open in a new tab and enable a Download button
+
+Show non-blocking toast if still generating after 10s
+
+Add error handling: if polling fails 3 times, show “Retry” and keep job_id.
+
+Proofs to paste
+
+The exact POST 202 JSON and subsequent GET poll JSON with url and size_bytes
+
+The working pre‑signed URL that downloads now
+
+The same file committed to /verification/sample.pdf
+
+A 15–30s screen recording of Generate PDF → file downloads from the UI
+
+Popular Countries: rank by searches in last 7 days (not alphabetical)
+Paste this:
+
+Popular Countries are still alphabetical. Implement ranking by searches in the last 7 days with counts and a tooltip.
+
+Backend
+
+Add GET /api/countries/popular?window=7d&limit=6 returning:
+[{ iso, name, searchCount7d }, ...]
+
+If fewer than 6 have activity, fill with all‑time top searched (include searchCountAllTime).
+
+Frontend
+
+Show a small badge with the count (e.g., 53 in last 7 days)
+
+Add tooltip: “Ranked by searches in the last 7 days”
+
+If an item is from fallback, show a subtle “all‑time” indicator
+
+Proofs to paste
+
+The JSON returned by /api/countries/popular?window=7d&limit=6
+
+A screenshot of the home card in my preview showing the ranked list with counts and tooltip
+
+Acceptance check (I will verify this)
+
+I will click Generate PDF and see a file download
+
+I will refresh home and see Popular Countries sorted by 7‑day counts with visible numbers and tooltip
+
+If either item fails
+
+Paste the exact error and the code diff you applied; do not move on until both are green.

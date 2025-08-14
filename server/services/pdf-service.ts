@@ -43,14 +43,43 @@ export class PDFService {
     logger.info({ contractor: request.contractorName }, 'Starting PDF generation');
 
     try {
-      // Create filename for the PDF
       const fileName = `risk-reports/${request.riskAssessment.id}_${request.contractorName.replace(/\s+/g, '_')}_Risk_Report.pdf`;
       let preSignedUrl: string;
-      let s3Url: string;
       let pdfBuffer: Buffer;
 
-      // For now, create a simple mock PDF buffer to test the pipeline
-      // TODO: Implement actual Puppeteer PDF generation
+      // Generate real PDF with Puppeteer
+      logger.info({ contractor: request.contractorName }, 'Starting PDF generation with Puppeteer');
+      
+      const browser = await puppeteer.launch({
+        args: ['--no-sandbox', '--disable-setuid-sandbox'], // Required flags for containers
+        headless: true,
+        timeout: 30000 // 30s timeout
+      });
+
+      try {
+        const page = await browser.newPage();
+        
+        // Create HTML content for the PDF
+        const htmlContent = this.generateHTMLReport(request);
+        
+        const renderStart = Date.now();
+        await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+        
+        pdfBuffer = await page.pdf({
+          format: 'A4',
+          margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' },
+          printBackground: true,
+          preferCSSPageSize: true
+        });
+
+        const renderTime = Date.now() - renderStart;
+        logger.info({ renderTime, contractor: request.contractorName }, 'PDF render completed');
+
+      } finally {
+        await browser.close();
+      }
+
+      // Mock PDF content for fallback testing (keeping original for reference)
       const mockPdfContent = `%PDF-1.4
 1 0 obj
 <<
