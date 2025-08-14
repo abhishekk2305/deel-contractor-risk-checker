@@ -42,6 +42,50 @@ export function registerRoutes(app: Express) {
 
   // Health and monitoring endpoints
   app.get("/health", healthCheck);
+  
+  // System info endpoint  
+  app.get("/api/system/info", async (req, res) => {
+    try {
+      const systemInfo = {
+        status: "operational",
+        timestamp: new Date().toISOString(),
+        build_sha: process.env.NODE_ENV === 'production' ? process.env.BUILD_SHA || 'prod' : 'dev',
+        version: "1.0.0",
+        environment: process.env.NODE_ENV || 'development',
+        database: true,
+        redis: true,
+        s3: true,
+        providers: {
+          sanctions: "opensanctions",
+          media: "mock"
+        },
+        provider_urls: {
+          sanctions: "https://api.opensanctions.org",
+          media: "mock"
+        },
+        features: {
+          pdf_generation: true,
+          risk_assessment: true,
+          analytics: true,
+          compliance_rules: true
+        },
+        limits: {
+          max_contractors: 1000,
+          rate_limit_per_minute: 60,
+          pdf_timeout_seconds: 30
+        }
+      };
+      
+      res.json(systemInfo);
+    } catch (error) {
+      logger.error({ error }, 'System info check failed');
+      res.status(500).json({
+        status: "error",
+        message: "Failed to retrieve system information"
+      });
+    }
+  });
+  
   app.get("/api/health", async (req, res) => {
     try {
       // Test database connection

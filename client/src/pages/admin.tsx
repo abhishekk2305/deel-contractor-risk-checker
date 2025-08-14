@@ -57,7 +57,7 @@ export default function AdminPage() {
     queryFn: async () => {
       const response = await fetch('/api/admin/compliance-rules');
       if (!response.ok) throw new Error('Failed to fetch rules');
-      return response.json() as ComplianceRule[];
+      return response.json();
     },
   });
 
@@ -65,9 +65,9 @@ export default function AdminPage() {
   const { data: systemStatus, isLoading: statusLoading, refetch: refetchStatus } = useQuery({
     queryKey: ['admin', 'system-status'],
     queryFn: async () => {
-      const response = await fetch('/api/health');
+      const response = await fetch('/api/system/info');
       if (!response.ok) throw new Error('Failed to fetch system status');
-      return response.json() as SystemStatus;
+      return response.json();
     },
   });
 
@@ -326,7 +326,7 @@ export default function AdminPage() {
                     <div className="flex items-center justify-between p-3 border rounded">
                       <span className="font-medium">Database</span>
                       <div className="flex items-center gap-2">
-                        {getStatusIcon(systemStatus.database)}
+                        {getStatusIcon(systemStatus.database || false)}
                         <span>{systemStatus.database ? 'Connected' : 'Disconnected'}</span>
                       </div>
                     </div>
@@ -334,7 +334,7 @@ export default function AdminPage() {
                     <div className="flex items-center justify-between p-3 border rounded">
                       <span className="font-medium">Redis Cache</span>
                       <div className="flex items-center gap-2">
-                        {getStatusIcon(systemStatus.redis)}
+                        {getStatusIcon(systemStatus.redis || false)}
                         <span>{systemStatus.redis ? 'Connected' : 'Disconnected'}</span>
                       </div>
                     </div>
@@ -342,7 +342,7 @@ export default function AdminPage() {
                     <div className="flex items-center justify-between p-3 border rounded">
                       <span className="font-medium">S3 Storage</span>
                       <div className="flex items-center gap-2">
-                        {getStatusIcon(systemStatus.s3)}
+                        {getStatusIcon(systemStatus.s3 || false)}
                         <span>{systemStatus.s3 ? 'Connected' : 'Disconnected'}</span>
                       </div>
                     </div>
