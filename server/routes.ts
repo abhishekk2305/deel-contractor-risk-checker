@@ -10,38 +10,34 @@ import { eq, desc, ilike, or, and, sql, count, gte } from "drizzle-orm";
 import { enhancedRiskEngine } from "./services/risk-engine-enhanced";
 import { pdfService } from "./services/pdf-service";
 import { analyticsService } from "./services/analytics-service";
+import { metricsMiddleware } from "./middleware/metrics";
+import { healthCheck, metricsEndpoint, readinessCheck, livenessCheck } from "./middleware/health";
 import { createChildLogger } from "./lib/logger";
 
 const logger = createChildLogger('routes');
 
 export function registerRoutes(app: Express) {
+  // Enable trust proxy for accurate rate limiting
+  app.set('trust proxy', true);
+  
+  // Apply metrics middleware globally
+  app.use(metricsMiddleware);
+  
   // Rate limiting
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100, // limit each IP to 100 requests per windowMs
-    message: "Too many requests from this IP, please try again later."
+    message: "Too many requests from this IP, please try again later.",
+    trustProxy: true
   });
 
   app.use("/api", limiter);
 
-  // Health check endpoint
-  app.get("/health", async (req, res) => {
-    try {
-      const healthStatus = await analyticsService.getHealthStatus();
-      res.status(healthStatus.status === 'healthy' ? 200 : 503).json({
-        status: healthStatus.status,
-        timestamp: new Date().toISOString(),
-        checks: healthStatus.checks,
-        version: "1.0.0"
-      });
-    } catch (error) {
-      res.status(503).json({
-        status: "unhealthy",
-        timestamp: new Date().toISOString(),
-        error: "Health check failed"
-      });
-    }
-  });
+  // Health and monitoring endpoints
+  app.get("/health", healthCheck);
+  app.get("/metrics", metricsEndpoint);  
+  app.get("/ready", readinessCheck);
+  app.get("/live", livenessCheck);
 
   // Analytics endpoint
   app.get("/api/analytics", async (req, res) => {

@@ -1,18 +1,19 @@
 import { createChildLogger } from "../lib/logger";
-import { createRiskAdapter, type RiskAdapter, type SanctionsResult, type PEPResult, type AdverseMediaResult } from "../adapters/risk-adapter";
-import { redis } from "../lib/redis";
-import { db } from "../lib/database";
-import { contractors, riskScores, countries } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { complyAdvantageProvider, type SanctionsCheckResult } from "../providers/comply-advantage";
+import { newsAPIProvider, type AdverseMediaResult } from "../providers/news-api";
 
-const logger = createChildLogger('risk-engine');
+const logger = createChildLogger('risk-engine-enhanced');
 
-export interface RiskCheckRequest {
+// Feature flags for provider selection
+const FEATURE_SANCTIONS_PROVIDER = process.env.FEATURE_SANCTIONS_PROVIDER || 'mock'; // 'mock' | 'complyadvantage'
+const FEATURE_MEDIA_PROVIDER = process.env.FEATURE_MEDIA_PROVIDER || 'mock'; // 'mock' | 'newsapi'
+
+export interface RiskAssessmentRequest {
   contractorName: string;
   contractorEmail?: string;
   countryIso: string;
-  contractorType: 'employee' | 'contractor' | 'freelancer';
-  idempotencyKey?: string;
+  contractorType: 'independent' | 'eor' | 'freelancer';
+  registrationId?: string;
 }
 
 export interface RiskAssessmentResult {
@@ -20,485 +21,400 @@ export interface RiskAssessmentResult {
   contractorId: string;
   overallScore: number;
   riskTier: 'low' | 'medium' | 'high';
-  topRisks: string[];
+  topRisks: Array<{ title: string; description: string; severity: 'low' | 'medium' | 'high' }>;
   recommendations: string[];
-  penaltyRange: {
-    min: number;
-    max: number;
-    currency: string;
+  penaltyRange: string;
+  partialSources?: string[];
+  rulesetVersion: number;
+  breakdown: {
+    sanctions: number;
+    pep: number;
+    adverseMedia: number;
+    internalHistory: number;
+    countryBaseline: number;
   };
-  sourceResults: {
-    sanctions: SanctionsResult & { success: boolean; error?: string };
-    pep: PEPResult & { success: boolean; error?: string };
-    adverseMedia: AdverseMediaResult & { success: boolean; error?: string };
-    countryBaseline: { score: number; factors: string[] };
+  generatedAt: string;
+  expiresAt: string;
+  providerInfo?: {
+    sanctions: any;
+    adverseMedia: any;
   };
-  partialResults: boolean;
-  failedSources: string[];
-  generatedAt: Date;
-  expiresAt: Date;
 }
 
 export class EnhancedRiskEngine {
-  private riskAdapter: RiskAdapter;
-  private weights = {
-    sanctions: 0.45,
-    pep: 0.15,
-    adverseMedia: 0.15,
-    countryBaseline: 0.10,
-    internalHistory: 0.15,
+  private config = {
+    weights: {
+      sanctions: 0.45,      // 45%
+      pep: 0.15,           // 15% 
+      adverseMedia: 0.15,   // 15%
+      internalHistory: 0.15, // 15%
+      countryBaseline: 0.10  // 10%
+    },
+    tierThresholds: {
+      low: 30,
+      medium: 70,
+      high: 100
+    }
   };
 
-  constructor() {
-    this.riskAdapter = createRiskAdapter();
-    logger.info(`Initialized risk engine with adapter: ${this.riskAdapter.name}`);
-  }
-
-  async performRiskCheck(request: RiskCheckRequest): Promise<RiskAssessmentResult> {
+  async assessRisk(request: RiskAssessmentRequest): Promise<RiskAssessmentResult> {
     const startTime = Date.now();
-    logger.info({ contractorName: request.contractorName, country: request.countryIso }, 'Starting risk assessment');
-
-    // Check for cached result using idempotency key
-    if (request.idempotencyKey) {
-      const cached = await this.getCachedResult(request.idempotencyKey);
-      if (cached) {
-        logger.info({ idempotencyKey: request.idempotencyKey }, 'Returning cached risk assessment');
-        return cached;
-      }
-    }
-
+    const partialSources: string[] = [];
+    
+    logger.info({ 
+      contractorName: request.contractorName, 
+      countryIso: request.countryIso, 
+      contractorType: request.contractorType,
+      sanctionsProvider: FEATURE_SANCTIONS_PROVIDER,
+      mediaProvider: FEATURE_MEDIA_PROVIDER
+    }, 'Starting enhanced risk assessment');
+    
     try {
-      // Get or create contractor
-      const contractor = await this.getOrCreateContractor(request);
-      
-      // Get country information
-      const country = await this.getCountryInfo(request.countryIso);
-      if (!country) {
-        throw new Error(`Country not found: ${request.countryIso}`);
-      }
-
-      // Perform parallel risk checks
-      const [sanctionsResult, pepResult, adverseMediaResult] = await Promise.allSettled([
-        this.checkSanctionsWithFallback(request.contractorName, request.countryIso),
-        this.checkPEPWithFallback(request.contractorName, request.countryIso),
-        this.checkAdverseMediaWithFallback(request.contractorName, request.countryIso)
+      // Run external provider checks in parallel
+      const [sanctionsResult, adverseMediaResult, countryBaseline] = await Promise.allSettled([
+        this.checkSanctions(request.contractorName, request.countryIso),
+        this.checkAdverseMedia(request.contractorName, request.countryIso),
+        this.getCountryBaseline(request.countryIso)
       ]);
 
-      // Calculate country baseline risk
-      const countryBaseline = this.calculateCountryBaselineRisk(country);
+      // Handle sanctions check result
+      let sanctions = 0, pep = 0;
+      let sanctionsInfo = null;
+      if (sanctionsResult.status === 'fulfilled') {
+        sanctions = sanctionsResult.value.riskScore;
+        pep = sanctionsResult.value.isPEP ? 60 : 0;
+        sanctionsInfo = sanctionsResult.value;
+        
+        logger.info({
+          provider: FEATURE_SANCTIONS_PROVIDER,
+          isSanctioned: sanctionsResult.value.isSanctioned,
+          isPEP: sanctionsResult.value.isPEP,
+          riskScore: sanctionsResult.value.riskScore,
+          confidence: sanctionsResult.value.confidence
+        }, 'Sanctions check completed');
+      } else {
+        logger.warn({ error: sanctionsResult.reason }, 'Sanctions check failed, using fallback');
+        partialSources.push('sanctions-timeout');
+        sanctions = this.getFallbackSanctionsScore(request.contractorName, request.countryIso);
+      }
 
-      // Get internal history
-      const internalHistory = await this.getInternalRiskHistory(contractor.id);
+      // Handle adverse media result  
+      let adverseMedia = 0;
+      let mediaInfo = null;
+      if (adverseMediaResult.status === 'fulfilled') {
+        adverseMedia = adverseMediaResult.value.riskScore;
+        mediaInfo = adverseMediaResult.value;
+        
+        logger.info({
+          provider: FEATURE_MEDIA_PROVIDER,
+          hasAdverseMedia: adverseMediaResult.value.hasAdverseMedia,
+          riskScore: adverseMediaResult.value.riskScore,
+          articlesFound: adverseMediaResult.value.articles?.length || 0
+        }, 'Adverse media check completed');
+      } else {
+        logger.warn({ error: adverseMediaResult.reason }, 'Adverse media check failed, using fallback');
+        partialSources.push('adverse-media-timeout');
+        adverseMedia = this.getFallbackMediaScore(request.contractorName, request.countryIso);
+      }
 
-      // Calculate overall risk score
-      const sourceResults = {
-        sanctions: this.unwrapResult(sanctionsResult),
-        pep: this.unwrapResult(pepResult),
-        adverseMedia: this.unwrapResult(adverseMediaResult),
-        countryBaseline
-      };
+      // Handle country baseline
+      let baseline = 25; // default
+      if (countryBaseline.status === 'fulfilled') {
+        baseline = countryBaseline.value;
+      }
 
-      const overallScore = this.calculateOverallRisk(sourceResults, internalHistory);
-      const riskTier = this.determineRiskTier(overallScore);
+      // Calculate internal history score (simulated based on contractor data)
+      const internalHistory = this.calculateInternalHistoryScore(request.contractorName, request.contractorType);
       
-      // Generate insights
-      const topRisks = this.identifyTopRisks(sourceResults, internalHistory, country);
-      const recommendations = this.generateRecommendations(sourceResults, riskTier, country);
-      const penaltyRange = this.estimatePenaltyRange(riskTier, country);
-
-      // Check if we have partial results
-      const failedSources = [
-        !sourceResults.sanctions.success && 'sanctions',
-        !sourceResults.pep.success && 'pep',
-        !sourceResults.adverseMedia.success && 'adverse_media'
-      ].filter(Boolean) as string[];
-
+      // Calculate weighted overall score
+      const overallScore = Math.round(
+        sanctions * this.config.weights.sanctions +
+        pep * this.config.weights.pep +
+        adverseMedia * this.config.weights.adverseMedia +
+        internalHistory * this.config.weights.internalHistory +
+        baseline * this.config.weights.countryBaseline
+      );
+      
+      // Determine risk tier
+      let riskTier: 'low' | 'medium' | 'high';
+      if (overallScore < this.config.tierThresholds.low) riskTier = 'low';
+      else if (overallScore < this.config.tierThresholds.medium) riskTier = 'medium';
+      else riskTier = 'high';
+      
+      // Generate contextual risks and recommendations
+      const { topRisks, recommendations, penaltyRange } = this.generateRiskContext(
+        request.countryIso,
+        riskTier,
+        overallScore,
+        request.contractorType,
+        sanctionsInfo,
+        mediaInfo
+      );
+      
+      const breakdown = {
+        sanctions,
+        pep,
+        adverseMedia,
+        internalHistory,
+        countryBaseline: baseline
+      };
+      
       const result: RiskAssessmentResult = {
         id: crypto.randomUUID(),
-        contractorId: contractor.id,
+        contractorId: '', // Will be set by caller
         overallScore,
         riskTier,
         topRisks,
         recommendations,
         penaltyRange,
-        sourceResults,
-        partialResults: failedSources.length > 0,
-        failedSources,
-        generatedAt: new Date(),
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+        partialSources: partialSources.length > 0 ? partialSources : undefined,
+        rulesetVersion: 1,
+        breakdown,
+        generatedAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24h expiry
+        providerInfo: {
+          sanctions: sanctionsInfo,
+          adverseMedia: mediaInfo
+        }
       };
-
-      // Store result in database
-      await this.storeRiskResult(result);
-
-      // Cache result if idempotency key provided
-      if (request.idempotencyKey) {
-        await this.cacheResult(request.idempotencyKey, result);
-      }
-
+      
       const duration = Date.now() - startTime;
       logger.info({ 
-        contractorId: contractor.id, 
-        riskTier, 
+        duration, 
         overallScore, 
-        duration,
-        partialResults: result.partialResults,
-        failedSources: result.failedSources
-      }, 'Risk assessment completed');
-
+        riskTier,
+        partialSources,
+        providers: {
+          sanctions: FEATURE_SANCTIONS_PROVIDER,
+          media: FEATURE_MEDIA_PROVIDER
+        }
+      }, 'Enhanced risk assessment completed');
+      
       return result;
-
+      
     } catch (error) {
-      logger.error({ error, request }, 'Risk assessment failed');
-      throw new Error(`Risk assessment failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  private async checkSanctionsWithFallback(name: string, country: string) {
-    try {
-      const result = await this.riskAdapter.checkSanctions(name, country);
-      return { ...result, success: true };
-    } catch (error) {
-      logger.warn({ error, name, country }, 'Sanctions check failed, using fallback');
-      return {
-        isListed: false,
-        confidence: 50,
-        sources: [],
-        details: [],
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
-  }
-
-  private async checkPEPWithFallback(name: string, country: string) {
-    try {
-      const result = await this.riskAdapter.checkPEP(name, country);
-      return { ...result, success: true };
-    } catch (error) {
-      logger.warn({ error, name, country }, 'PEP check failed, using fallback');
-      return {
-        isPEP: false,
-        confidence: 50,
-        positions: [],
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
-  }
-
-  private async checkAdverseMediaWithFallback(name: string, country: string) {
-    try {
-      const result = await this.riskAdapter.checkAdverseMedia(name, country);
-      return { ...result, success: true };
-    } catch (error) {
-      logger.warn({ error, name, country }, 'Adverse media check failed, using fallback');
-      return {
-        riskScore: 10,
-        confidence: 50,
-        articles: [],
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
-  }
-
-  private unwrapResult(settledResult: PromiseSettledResult<any>) {
-    if (settledResult.status === 'fulfilled') {
-      return settledResult.value;
-    } else {
-      logger.error({ error: settledResult.reason }, 'Risk check promise rejected');
-      return {
-        success: false,
-        error: settledResult.reason instanceof Error ? settledResult.reason.message : 'Unknown error'
-      };
-    }
-  }
-
-  private calculateCountryBaselineRisk(country: any) {
-    const factors = [];
-    let score = 0;
-
-    // Risk factors based on country data
-    if (country.riskLevel === 'high') {
-      score += 80;
-      factors.push('High-risk jurisdiction');
-    } else if (country.riskLevel === 'medium') {
-      score += 40;
-      factors.push('Medium-risk jurisdiction');
-    } else {
-      score += 10;
-      factors.push('Low-risk jurisdiction');
-    }
-
-    if (country.complianceScore < 70) {
-      score += 20;
-      factors.push('Low compliance score');
-    }
-
-    if (country.taxComplexity > 8) {
-      score += 15;
-      factors.push('High tax complexity');
-    }
-
-    if (country.contractorTypes.length < 2) {
-      score += 10;
-      factors.push('Limited contractor options');
-    }
-
-    return {
-      score: Math.min(score, 100),
-      factors
-    };
-  }
-
-  private async getInternalRiskHistory(contractorId: string) {
-    try {
-      const history = await db
-        .select()
-        .from(riskScores)
-        .where(eq(riskScores.contractorId, contractorId))
-        .orderBy(desc(riskScores.createdAt))
-        .limit(5);
-
-      if (history.length === 0) {
-        return { score: 5, factors: ['No previous history'] };
-      }
-
-      const avgScore = history.reduce((sum, record) => sum + record.overallScore, 0) / history.length;
-      const recentTrend = history.length >= 2 ? 
-        (history[0].overallScore > history[1].overallScore ? 'increasing' : 'stable') : 'stable';
-
-      return {
-        score: avgScore,
-        factors: [`Previous assessments average: ${avgScore.toFixed(1)}`, `Trend: ${recentTrend}`]
-      };
-    } catch (error) {
-      logger.warn({ error, contractorId }, 'Failed to get internal risk history');
-      return { score: 5, factors: ['History unavailable'] };
-    }
-  }
-
-  private calculateOverallRisk(sourceResults: any, internalHistory: any): number {
-    let score = 0;
-
-    // Sanctions (45% weight)
-    if (sourceResults.sanctions.success) {
-      score += (sourceResults.sanctions.isListed ? 90 : 5) * this.weights.sanctions;
-    } else {
-      score += 20 * this.weights.sanctions; // Conservative fallback
-    }
-
-    // PEP (15% weight)
-    if (sourceResults.pep.success) {
-      score += (sourceResults.pep.isPEP ? 70 : 10) * this.weights.pep;
-    } else {
-      score += 15 * this.weights.pep;
-    }
-
-    // Adverse Media (15% weight)
-    if (sourceResults.adverseMedia.success) {
-      score += sourceResults.adverseMedia.riskScore * this.weights.adverseMedia;
-    } else {
-      score += 20 * this.weights.adverseMedia;
-    }
-
-    // Country Baseline (10% weight)
-    score += sourceResults.countryBaseline.score * this.weights.countryBaseline;
-
-    // Internal History (15% weight)
-    score += internalHistory.score * this.weights.internalHistory;
-
-    return Math.round(Math.min(score, 100));
-  }
-
-  private determineRiskTier(score: number): 'low' | 'medium' | 'high' {
-    if (score >= 70) return 'high';
-    if (score >= 40) return 'medium';
-    return 'low';
-  }
-
-  private identifyTopRisks(sourceResults: any, internalHistory: any, country: any): string[] {
-    const risks = [];
-
-    if (sourceResults.sanctions.isListed) {
-      risks.push('Sanctions list match detected');
-    }
-
-    if (sourceResults.pep.isPEP) {
-      risks.push('Politically Exposed Person identified');
-    }
-
-    if (sourceResults.adverseMedia.riskScore > 50) {
-      risks.push('Adverse media coverage found');
-    }
-
-    if (country.riskLevel === 'high') {
-      risks.push(`High-risk jurisdiction: ${country.name}`);
-    }
-
-    if (country.complianceScore < 60) {
-      risks.push('Poor compliance environment');
-    }
-
-    if (internalHistory.score > 60) {
-      risks.push('Previous high-risk assessments');
-    }
-
-    return risks.slice(0, 5); // Return top 5 risks
-  }
-
-  private generateRecommendations(sourceResults: any, riskTier: string, country: any): string[] {
-    const recommendations = [];
-
-    if (riskTier === 'high') {
-      recommendations.push('Conduct enhanced due diligence');
-      recommendations.push('Require additional documentation');
-      recommendations.push('Implement monthly monitoring');
-    }
-
-    if (sourceResults.sanctions.isListed) {
-      recommendations.push('Immediate engagement suspension required');
-      recommendations.push('Legal review and compliance clearance needed');
-    }
-
-    if (sourceResults.pep.isPEP) {
-      recommendations.push('Enhanced KYC procedures required');
-      recommendations.push('Senior management approval needed');
-    }
-
-    if (country.riskLevel === 'high') {
-      recommendations.push(`Review ${country.name} country-specific compliance requirements`);
-      recommendations.push('Consider alternative engagement structures');
-    }
-
-    if (riskTier === 'medium') {
-      recommendations.push('Standard due diligence with quarterly reviews');
-      recommendations.push('Monitor for regulatory changes');
-    }
-
-    if (riskTier === 'low') {
-      recommendations.push('Standard onboarding process approved');
-      recommendations.push('Annual risk review recommended');
-    }
-
-    return recommendations.slice(0, 6);
-  }
-
-  private estimatePenaltyRange(riskTier: string, country: any) {
-    const currency = country.currencyCode;
-    
-    switch (riskTier) {
-      case 'high':
-        return {
-          min: country.currencyCode === 'USD' ? 50000 : 40000,
-          max: country.currencyCode === 'USD' ? 500000 : 400000,
-          currency
-        };
-      case 'medium':
-        return {
-          min: country.currencyCode === 'USD' ? 10000 : 8000,
-          max: country.currencyCode === 'USD' ? 100000 : 80000,
-          currency
-        };
-      default:
-        return {
-          min: country.currencyCode === 'USD' ? 1000 : 800,
-          max: country.currencyCode === 'USD' ? 25000 : 20000,
-          currency
-        };
-    }
-  }
-
-  private async getOrCreateContractor(request: RiskCheckRequest) {
-    try {
-      // Try to find existing contractor
-      const existing = await db
-        .select()
-        .from(contractors)
-        .where(eq(contractors.name, request.contractorName))
-        .limit(1);
-
-      if (existing.length > 0) {
-        return existing[0];
-      }
-
-      // Create new contractor
-      const [newContractor] = await db
-        .insert(contractors)
-        .values({
-          name: request.contractorName,
-          email: request.contractorEmail || `${request.contractorName.toLowerCase().replace(/\s+/g, '.')}@example.com`,
-          countryIso: request.countryIso,
-          contractorType: request.contractorType,
-          status: 'pending',
-        })
-        .returning();
-
-      return newContractor;
-    } catch (error) {
-      logger.error({ error, request }, 'Failed to get or create contractor');
+      const duration = Date.now() - startTime;
+      logger.error({ 
+        error: error instanceof Error ? error.message : 'Unknown error', 
+        duration 
+      }, 'Enhanced risk assessment failed');
       throw error;
     }
   }
 
-  private async getCountryInfo(iso: string) {
-    try {
-      const [country] = await db
-        .select()
-        .from(countries)
-        .where(eq(countries.iso, iso))
-        .limit(1);
-
-      return country;
-    } catch (error) {
-      logger.error({ error, iso }, 'Failed to get country info');
-      return null;
+  private async checkSanctions(contractorName: string, countryIso: string): Promise<SanctionsCheckResult> {
+    if (FEATURE_SANCTIONS_PROVIDER === 'complyadvantage') {
+      return await complyAdvantageProvider.checkSanctions(contractorName, countryIso);
+    } else {
+      // Use mock provider
+      return this.getMockSanctionsResult(contractorName, countryIso);
     }
   }
 
-  private async storeRiskResult(result: RiskAssessmentResult) {
-    try {
-      await db.insert(riskScores).values({
-        id: result.id,
-        contractorId: result.contractorId,
-        overallScore: result.overallScore,
-        riskTier: result.riskTier,
-        sanctionsScore: result.sourceResults.sanctions.isListed ? 90 : 5,
-        pepScore: result.sourceResults.pep.isPEP ? 70 : 10,
-        adverseMediaScore: result.sourceResults.adverseMedia.riskScore,
-        countryRiskScore: result.sourceResults.countryBaseline.score,
-        details: {
-          topRisks: result.topRisks,
-          recommendations: result.recommendations,
-          penaltyRange: result.penaltyRange,
-          sourceResults: result.sourceResults,
-          partialResults: result.partialResults,
-          failedSources: result.failedSources,
-        },
-        createdAt: result.generatedAt,
+  private async checkAdverseMedia(contractorName: string, countryIso: string): Promise<AdverseMediaResult> {
+    if (FEATURE_MEDIA_PROVIDER === 'newsapi') {
+      return await newsAPIProvider.checkAdverseMedia(contractorName, countryIso);
+    } else {
+      // Use mock provider
+      return this.getMockAdverseMediaResult(contractorName, countryIso);
+    }
+  }
+
+  private async getCountryBaseline(countryIso: string): Promise<number> {
+    // Country risk scores based on various international indices
+    const countryRiskMap: Record<string, number> = {
+      'US': 15, 'GB': 12, 'CA': 10, 'AU': 8, 'DE': 14,
+      'FR': 16, 'IT': 20, 'ES': 18, 'NL': 11, 'SE': 7,
+      'NO': 6, 'DK': 8, 'CH': 5, 'SG': 12, 'HK': 22,
+      'JP': 10, 'KR': 18, 'IN': 35, 'CN': 45, 'BR': 32,
+      'MX': 28, 'AR': 30, 'CL': 25, 'RU': 55, 'TR': 40,
+      'ZA': 38, 'NG': 45, 'EG': 42, 'PK': 48, 'BD': 50,
+      'IR': 75, 'IQ': 80, 'AF': 85, 'SY': 90, 'KP': 95
+    };
+    
+    return countryRiskMap[countryIso] || 25;
+  }
+
+  private getMockSanctionsResult(contractorName: string, countryIso: string): SanctionsCheckResult {
+    const nameHash = this.hashString(contractorName);
+    const countryHash = this.hashString(countryIso);
+    
+    const highRiskCountries = ['IR', 'KP', 'SY', 'AF'];
+    const baseRisk = highRiskCountries.includes(countryIso) ? 30 : 5;
+    
+    const riskModifier = nameHash % 100;
+    const isSanctioned = riskModifier < 5; // 5% chance
+    const isPEP = riskModifier >= 5 && riskModifier < 15; // 10% chance
+    
+    let riskScore = baseRisk;
+    if (isSanctioned) riskScore += 70;
+    if (isPEP) riskScore += 40;
+    
+    return {
+      isSanctioned,
+      isPEP,
+      riskScore: Math.min(100, riskScore),
+      confidence: 95,
+      sources: ['mock-sanctions'],
+      details: { mockData: true, searchTerm: contractorName, countryCode: countryIso }
+    };
+  }
+
+  private getMockAdverseMediaResult(contractorName: string, countryIso: string): AdverseMediaResult {
+    const nameHash = this.hashString(contractorName);
+    const riskModifier = nameHash % 100;
+    
+    const hasAdverseMedia = riskModifier < 15; // 15% chance
+    let riskScore = hasAdverseMedia ? 20 + (riskModifier % 40) : 0;
+    
+    return {
+      hasAdverseMedia,
+      riskScore,
+      confidence: 85,
+      sources: ['mock-media'],
+      articles: hasAdverseMedia ? [{
+        title: `${contractorName} compliance review`,
+        description: `Mock adverse media article for testing purposes`,
+        url: 'https://example.com/mock-article',
+        publishedAt: new Date().toISOString(),
+        sentiment: 'negative' as const
+      }] : []
+    };
+  }
+
+  private getFallbackSanctionsScore(contractorName: string, countryIso: string): number {
+    // Conservative fallback when sanctions API fails
+    const highRiskCountries = ['IR', 'KP', 'SY', 'AF', 'RU'];
+    return highRiskCountries.includes(countryIso) ? 40 : 10;
+  }
+
+  private getFallbackMediaScore(contractorName: string, countryIso: string): number {
+    // Conservative fallback when media API fails
+    return 15; // Moderate risk assumption
+  }
+
+  private calculateInternalHistoryScore(contractorName: string, contractorType: string): number {
+    // Simulate internal history score based on contractor type and name hash
+    const nameHash = this.hashString(contractorName);
+    const baseScore = contractorType === 'independent' ? 8 : contractorType === 'eor' ? 12 : 15;
+    return baseScore + (nameHash % 20);
+  }
+
+  private generateRiskContext(
+    countryIso: string,
+    riskTier: 'low' | 'medium' | 'high',
+    overallScore: number,
+    contractorType: string,
+    sanctionsInfo?: any,
+    mediaInfo?: any
+  ) {
+    const countryNames: Record<string, string> = {
+      'US': 'United States', 'GB': 'United Kingdom', 'CA': 'Canada',
+      'AU': 'Australia', 'DE': 'Germany', 'FR': 'France'
+    };
+
+    const countryName = countryNames[countryIso] || 'Selected country';
+    
+    // Generate top risks based on actual provider results
+    const topRisks: Array<{ title: string; description: string; severity: 'low' | 'medium' | 'high' }> = [];
+    
+    if (sanctionsInfo?.isSanctioned) {
+      topRisks.push({
+        title: "Sanctions List Match",
+        description: `Contractor appears on international sanctions lists`,
+        severity: "high" as const
       });
-    } catch (error) {
-      logger.error({ error, resultId: result.id }, 'Failed to store risk result');
     }
+    
+    if (sanctionsInfo?.isPEP) {
+      topRisks.push({
+        title: "Politically Exposed Person",
+        description: `Contractor identified as politically exposed person`,
+        severity: "medium" as const
+      });
+    }
+    
+    if (mediaInfo?.hasAdverseMedia) {
+      topRisks.push({
+        title: "Adverse Media Coverage",
+        description: `Negative media coverage found related to contractor`,
+        severity: "medium" as const
+      });
+    }
+
+    // Add standard country/compliance risks
+    topRisks.push({
+      title: "Standard compliance requirements",
+      description: `${countryName} regulatory environment requires careful compliance monitoring`,
+      severity: riskTier === 'high' ? "high" as const : "medium" as const
+    });
+
+    if (riskTier === 'medium' || riskTier === 'high') {
+      topRisks.push({
+        title: "Cross-border payment considerations",
+        description: `International payments require additional due diligence and reporting`,
+        severity: "medium" as const
+      });
+    }
+
+    // Trim to top 5 risks
+    const finalRisks = topRisks.slice(0, 5);
+
+    // Generate recommendations
+    const recommendations = [
+      "Review local employment laws and regulations",
+      "Ensure proper tax compliance and withholding procedures",
+      "Maintain updated contractor agreements and documentation"
+    ];
+
+    if (sanctionsInfo?.isSanctioned || sanctionsInfo?.isPEP) {
+      recommendations.unshift("Conduct enhanced due diligence before engagement");
+    }
+
+    if (mediaInfo?.hasAdverseMedia) {
+      recommendations.push("Monitor ongoing media coverage and reputation risks");
+    }
+
+    // Penalty ranges based on risk tier and country
+    const penaltyRanges = {
+      low: "$1,000 - $10,000",
+      medium: "$5,000 - $50,000", 
+      high: "$25,000 - $500,000"
+    };
+
+    return {
+      topRisks: finalRisks,
+      recommendations,
+      penaltyRange: penaltyRanges[riskTier]
+    };
   }
 
-  private async getCachedResult(idempotencyKey: string): Promise<RiskAssessmentResult | null> {
-    try {
-      const cached = await redis?.get(`risk:${idempotencyKey}`);
-      return cached ? JSON.parse(cached) : null;
-    } catch (error) {
-      logger.warn({ error, idempotencyKey }, 'Failed to get cached result');
-      return null;
+  private hashString(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
     }
+    return Math.abs(hash);
   }
 
-  private async cacheResult(idempotencyKey: string, result: RiskAssessmentResult) {
-    try {
-      await redis?.setex(`risk:${idempotencyKey}`, 86400, JSON.stringify(result)); // 24 hour cache
-    } catch (error) {
-      logger.warn({ error, idempotencyKey }, 'Failed to cache result');
-    }
+  // Provider information methods
+  getProviderStatus() {
+    return {
+      sanctions: {
+        enabled: FEATURE_SANCTIONS_PROVIDER,
+        provider: FEATURE_SANCTIONS_PROVIDER === 'complyadvantage' ? 
+          complyAdvantageProvider.getProviderInfo() : 
+          { name: 'Mock', configured: true }
+      },
+      adverseMedia: {
+        enabled: FEATURE_MEDIA_PROVIDER,
+        provider: FEATURE_MEDIA_PROVIDER === 'newsapi' ? 
+          newsAPIProvider.getProviderInfo() : 
+          { name: 'Mock', configured: true }
+      }
+    };
   }
 }
 

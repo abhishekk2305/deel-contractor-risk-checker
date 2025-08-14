@@ -2,8 +2,14 @@ import { RiskCheckRequest, RiskAssessmentResult } from "@shared/schema";
 import { externalApis } from "./external-apis";
 import { storage } from "../storage";
 import { createChildLogger } from "../lib/logger";
+import { complyAdvantageProvider, type SanctionsCheckResult } from "../providers/comply-advantage";
+import { newsAPIProvider, type AdverseMediaResult } from "../providers/news-api";
 
 const logger = createChildLogger('risk-engine');
+
+// Feature flags for provider selection
+const FEATURE_SANCTIONS_PROVIDER = process.env.FEATURE_SANCTIONS_PROVIDER || 'mock'; // 'mock' | 'complyadvantage'
+const FEATURE_MEDIA_PROVIDER = process.env.FEATURE_MEDIA_PROVIDER || 'mock'; // 'mock' | 'newsapi'
 
 interface RiskEngineConfig {
   weights: {

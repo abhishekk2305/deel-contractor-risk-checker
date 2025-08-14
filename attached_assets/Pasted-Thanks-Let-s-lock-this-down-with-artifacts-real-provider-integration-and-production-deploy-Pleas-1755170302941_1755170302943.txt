@@ -1,0 +1,81 @@
+Thanks. Let’s lock this down with artifacts, real provider integration, and production deploy. Please:
+
+Export verification artifacts
+
+Post a gist or repo folder “/verification” containing:
+
+SQL: schema + seed files used.
+
+cURL scripts for each API with sample requests/responses.
+
+Screenshots/PDF sample from the generated report.
+
+Log excerpts showing rate-limit 429 and idempotency working.
+
+Sentry event link/ID for the forced test error.
+
+List of environment variables with which ones are set (mask secrets).
+
+Show live evidence in console
+
+Print SELECT counts from all tables and the last 5 rows of audit_logs.
+
+Print the exact risk-check response for “John Smith” (JSON).
+
+Print the PDF report record (id, size_bytes, s3_url truncated) and confirm the pre-signed URL downloads.
+
+Wire at least one real external provider (keep adapters swappable)
+
+Sanctions/PEP: enable ComplyAdvantage sandbox. Log provider=complyadvantage and show a real API call sample (redact keys).
+
+Adverse media: enable NewsAPI (or GDELT) and include its contribution in the score. Show partial_sources behavior by simulating a timeout.
+
+Keep FEATURE flags:
+
+FEATURE_SANCTIONS_PROVIDER=mock|complyadvantage
+
+FEATURE_MEDIA_PROVIDER=mock|newsapi
+
+Hardening and SLOs
+
+Add health endpoints returning build git SHA and ruleset_version.
+
+Add OpenAPI/Swagger for /api and /rules-engine.
+
+Add Prometheus-style metrics for request_count and request_duration_seconds by route.
+
+Configure alerts: p95 > 2s and error rate > 2% → log warning.
+
+Confirm Helmet/CSP/CORS headers in responses (paste sample headers).
+
+Production deploy plan
+
+Prepare Deploys for 4 Repls (frontend, api, rules-engine, worker) with “Always On.”
+
+Provide a checklist and runbook:
+
+Required env vars for each service
+
+Rotation procedure for API_JWT_SECRET
+
+Backup/restore steps for Postgres
+
+Rollback steps for each service
+
+Custom domain: set up and share DNS records needed for the frontend (optional now).
+
+Demo script and video
+
+Execute the scripted flow end-to-end (search → detail → risk-check → PDF → admin publish → analytics update).
+
+Record a short demo (or provide an exported GIF) and place it in /verification.
+
+Nice-to-haves (if time permits)
+
+Add GET /api/risk-check/:id to fetch historical results.
+
+Add diff view in Admin for rule versions (before/after highlight).
+
+Add “How the score works” modal explaining factors/weights and ruleset version.
+
+After you post the artifacts and enable at least one real provider, confirm the public preview URL where I can replicate each step.
