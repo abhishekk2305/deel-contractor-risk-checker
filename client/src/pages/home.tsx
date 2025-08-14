@@ -42,9 +42,9 @@ export default function HomePage() {
   });
 
   const { data: countriesData } = useQuery({
-    queryKey: ['countries', { popular: true, limit: 6 }],
+    queryKey: ['countries', { popular: true, limit: 6, window: '7d' }],
     queryFn: async () => {
-      const response = await fetch('/api/countries/popular?limit=6');
+      const response = await fetch('/api/countries/popular?window=7d&limit=6');
       if (!response.ok) throw new Error('Failed to fetch popular countries');
       return response.json();
     },

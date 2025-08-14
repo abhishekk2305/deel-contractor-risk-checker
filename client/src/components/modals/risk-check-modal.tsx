@@ -64,7 +64,7 @@ export function RiskCheckModal({ isOpen, onClose, country, onSuccess }: RiskChec
       
       if (onSuccess) {
         setTimeout(() => {
-          onSuccess(result.id);
+          onSuccess((result as any).contractorId || (result as any).id || 'unknown');
         }, 2000); // Show results for 2 seconds before closing
       }
     } catch (error) {
@@ -151,7 +151,7 @@ export function RiskCheckModal({ isOpen, onClose, country, onSuccess }: RiskChec
               <Button variant="outline" onClick={handleClose}>
                 Close
               </Button>
-              <Button onClick={() => onSuccess?.()}>
+              <Button onClick={() => onSuccess?.((assessment as any).contractorId || (assessment as any).id || 'unknown')}>
                 Generate PDF Report
               </Button>
             </div>

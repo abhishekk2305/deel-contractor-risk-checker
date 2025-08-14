@@ -89,9 +89,9 @@ export const usePdfReportStatus = (jobId: string | null) => {
       return response.json();
     },
     enabled: !!jobId,
-    refetchInterval: (data) => {
+    refetchInterval: (queryData) => {
       // Stop polling when the report is ready or failed
-      return data?.status === 'completed' || data?.status === 'failed' ? false : 2000;
+      return (queryData as any)?.status === 'completed' || (queryData as any)?.status === 'failed' ? false : 2000;
     },
   });
 };

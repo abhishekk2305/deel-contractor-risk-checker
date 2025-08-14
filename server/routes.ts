@@ -138,31 +138,42 @@ export function registerRoutes(app: Express) {
         metadata: { search, page }
       });
 
-      let query = db.select().from(countries);
+      let baseQuery = db.select().from(countries);
+      let results;
+      let total = 0;
 
       if (search) {
-        query = query.where(
-          or(
-            sql`unaccent(${countries.name}) ILIKE unaccent(${`%${search}%`})`,
-            ilike(countries.iso, `%${search.toUpperCase()}%`)
-          )
+        const searchCondition = or(
+          sql`unaccent(${countries.name}) ILIKE unaccent(${`%${search}%`})`,
+          ilike(countries.iso, `%${search.toUpperCase()}%`)
         );
-      }
+        
+        const offset = (page - 1) * limit;
+        results = await baseQuery
+          .where(searchCondition)
+          .limit(limit)
+          .offset(offset)
+          .orderBy(countries.name);
 
-      const offset = (page - 1) * limit;
-      const results = await query.limit(limit).offset(offset).orderBy(countries.name);
+        // Get total count for pagination
+        const [{ count: totalCount }] = await db
+          .select({ count: count() })
+          .from(countries)
+          .where(searchCondition);
+        total = totalCount;
+      } else {
+        const offset = (page - 1) * limit;
+        results = await baseQuery
+          .limit(limit)
+          .offset(offset)
+          .orderBy(countries.name);
 
-      // Get total count for pagination
-      let totalQuery = db.select({ count: count() }).from(countries);
-      if (search) {
-        totalQuery = totalQuery.where(
-          or(
-            sql`unaccent(${countries.name}) ILIKE unaccent(${`%${search}%`})`,
-            ilike(countries.iso, `%${search.toUpperCase()}%`)
-          )
-        );
+        // Get total count for pagination
+        const [{ count: totalCount }] = await db
+          .select({ count: count() })
+          .from(countries);
+        total = totalCount;
       }
-      const [{ count: total }] = await totalQuery;
 
       res.json({
         countries: results,
@@ -184,21 +195,59 @@ export function registerRoutes(app: Express) {
   app.get("/api/countries/popular", async (req, res) => {
     try {
       const limit = parseInt(req.query.limit as string) || 6;
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const window = req.query.window as string || '7d';
+      
+      let daysBack = 7;
+      if (window === '30d') daysBack = 30;
+      if (window === '90d') daysBack = 90;
+      
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - daysBack);
 
-      // Get popular countries from analytics events (country views and risk checks)
-      // Simplified approach - fallback to alphabetical for now due to audit_logs schema issues
-      const fallbackCountries = await db
+      // Get analytics data and extract country popularity
+      const analytics = await analyticsService.getAnalyticsData(daysBack);
+      const topCountriesData = analytics.topCountries || [];
+      
+      if (topCountriesData.length === 0) {
+        // Fallback to alphabetical if no analytics data
+        const fallbackCountries = await db
+          .select()
+          .from(countries)
+          .orderBy(countries.name)
+          .limit(limit);
+        
+        return res.json({
+          countries: fallbackCountries.map(c => ({ ...c, searchCount: 0 })),
+          window,
+          fallback: true,
+          message: `No search activity in last ${daysBack} days - showing alphabetical`
+        });
+      }
+
+      // Get country details for popular countries
+      const popularCountryNames = topCountriesData.slice(0, limit).map(tc => tc.country);
+      const countriesWithCounts = await db
         .select()
         .from(countries)
-        .orderBy(countries.name)
-        .limit(limit);
+        .where(sql`${countries.name} = ANY(${popularCountryNames})`)
+        .then(countryRows => 
+          countryRows.map(country => {
+            const countData = topCountriesData.find(tc => tc.country === country.name);
+            return {
+              ...country,
+              searchCount: countData?.count || 0
+            };
+          })
+        );
+
+      // Sort by search count descending
+      countriesWithCounts.sort((a, b) => b.searchCount - a.searchCount);
       
       res.json({
-        countries: fallbackCountries,
-        fallback: true,
-        message: 'Popular countries (alphabetical order)'
+        countries: countriesWithCounts,
+        window,
+        fallback: false,
+        message: `Ranked by searches in the last ${daysBack} days`
       });
     } catch (error) {
       logger.error({ error }, "Error fetching popular countries");
@@ -764,7 +813,7 @@ export function registerRoutes(app: Express) {
       };
 
       await analyticsService.trackEvent({
-        event: "rule_create",
+        event: "admin_rule_publish",
         metadata: { ruleId: newRule.id, title }
       });
       res.status(201).json(newRule);
@@ -786,7 +835,7 @@ export function registerRoutes(app: Express) {
       };
 
       await analyticsService.trackEvent({
-        event: "rule_publish", 
+        event: "admin_rule_publish", 
         metadata: { ruleId: id }
       });
       res.json(publishedRule);

@@ -6,7 +6,7 @@ interface ErrorBannerProps {
   error: Error | string;
   onRetry?: () => void;
   onDismiss?: () => void;
-  variant?: 'destructive' | 'warning';
+  variant?: 'destructive' | 'default';
   className?: string;
 }
 
@@ -64,7 +64,7 @@ export function PartialSourceWarning({
   if (partialSources.length === 0) return null;
 
   return (
-    <Alert variant="warning" className={className}>
+    <Alert variant="default" className={className}>
       <AlertCircle className="h-4 w-4" />
       <AlertDescription>
         <strong>Partial Data Warning:</strong> Some data sources were unavailable during this assessment: {partialSources.join(', ')}. 
