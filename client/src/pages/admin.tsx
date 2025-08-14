@@ -386,6 +386,156 @@ export default function AdminPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="users">
+            <Card>
+              <CardHeader>
+                <CardTitle>User Management</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Alert>
+                  <Users className="h-4 w-4" />
+                  <AlertDescription>
+                    User management features are coming soon. Currently, the system operates without user authentication.
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="settings" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="w-5 h-5" />
+                  System Settings
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  
+                  {/* Provider Configuration */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">External Providers</h3>
+                    
+                    <div className="space-y-3">
+                      <div className="p-4 border rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="font-medium">OpenSanctions API</label>
+                          <Badge variant={systemStatus?.providers?.sanctions === 'opensanctions' ? 'default' : 'secondary'}>
+                            {systemStatus?.providers?.sanctions || 'Not configured'}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2">Live sanctions and PEP screening provider</p>
+                        {systemStatus?.provider_urls?.sanctions && systemStatus.provider_urls.sanctions !== 'mock' ? (
+                          <p className="text-xs text-green-600 font-mono">{systemStatus.provider_urls.sanctions}</p>
+                        ) : (
+                          <p className="text-xs text-yellow-600">Using mock data - configure API key for live data</p>
+                        )}
+                      </div>
+
+                      <div className="p-4 border rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="font-medium">News API</label>
+                          <Badge variant={systemStatus?.providers?.media === 'newsapi' ? 'default' : 'secondary'}>
+                            {systemStatus?.providers?.media || 'Mock'}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2">Adverse media monitoring provider</p>
+                        {systemStatus?.provider_urls?.media && systemStatus.provider_urls.media !== 'mock' ? (
+                          <p className="text-xs text-green-600 font-mono">{systemStatus.provider_urls.media}</p>
+                        ) : (
+                          <p className="text-xs text-yellow-600">Using mock data - configure API key for live data</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Storage Configuration */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Storage & Infrastructure</h3>
+                    
+                    <div className="space-y-3">
+                      <div className="p-4 border rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="font-medium">Database</label>
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(systemStatus?.database)}
+                            <span className="text-sm">{systemStatus?.database ? 'Connected' : 'Disconnected'}</span>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-600">PostgreSQL database connection</p>
+                      </div>
+
+                      <div className="p-4 border rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="font-medium">Redis Cache</label>
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(systemStatus?.redis)}
+                            <span className="text-sm">{systemStatus?.redis ? 'Connected' : 'Disconnected'}</span>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-600">Caching and session storage</p>
+                      </div>
+
+                      <div className="p-4 border rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="font-medium">AWS S3 Storage</label>
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(systemStatus?.s3)}
+                            <span className="text-sm">{systemStatus?.s3 ? 'Connected' : 'Disconnected'}</span>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-600">PDF report storage and file uploads</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* System Information */}
+                <div className="pt-6 border-t">
+                  <h3 className="text-lg font-semibold mb-4">System Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <div className="text-sm font-medium text-gray-600">Version</div>
+                      <div className="text-lg font-mono">{systemStatus?.version || '1.0.0'}</div>
+                    </div>
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <div className="text-sm font-medium text-gray-600">Build SHA</div>
+                      <div className="text-sm font-mono text-gray-700">
+                        {systemStatus?.build_sha?.substring(0, 8) || 'dev'}...
+                      </div>
+                    </div>
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <div className="text-sm font-medium text-gray-600">Last Updated</div>
+                      <div className="text-sm">
+                        {systemStatus?.timestamp ? new Date(systemStatus.timestamp).toLocaleString() : 'Unknown'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="pt-6 border-t">
+                  <div className="flex items-center gap-4">
+                    <Button onClick={handleRunDiagnostics} disabled={statusLoading}>
+                      <Database className="w-4 h-4 mr-2" />
+                      {statusLoading ? 'Running...' : 'Refresh System Status'}
+                    </Button>
+                    <Button variant="outline" onClick={() => window.open('/health', '_blank')}>
+                      <Activity className="w-4 h-4 mr-2" />
+                      View Health Check
+                    </Button>
+                    <Button variant="outline" onClick={() => window.open('/metrics', '_blank')}>
+                      <FileText className="w-4 h-4 mr-2" />
+                      View Metrics
+                    </Button>
+                  </div>
+                </div>
+
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </main>
     </div>

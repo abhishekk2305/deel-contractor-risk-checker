@@ -868,5 +868,33 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // System Settings endpoints
+  app.get("/api/admin/system-info", async (req, res) => {
+    try {
+      const systemInfo = {
+        version: process.env.npm_package_version || '1.0.0',
+        buildSha: process.env.BUILD_SHA || 'development',
+        nodeVersion: process.version,
+        environment: process.env.NODE_ENV || 'development',
+        uptime: process.uptime(),
+        memoryUsage: process.memoryUsage(),
+        providers: {
+          sanctions: process.env.SANCTIONS_PROVIDER || 'opensanctions',
+          media: process.env.FEATURE_MEDIA_PROVIDER || 'mock'
+        },
+        storage: {
+          database: !!process.env.DATABASE_URL,
+          s3: !!(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY),
+          redis: !!process.env.REDIS_URL
+        }
+      };
+      
+      res.json(systemInfo);
+    } catch (error) {
+      logger.error({ error }, "Error fetching system info");
+      res.status(500).json({ error: "Failed to fetch system information" });
+    }
+  });
+
   return httpServer;
 }
