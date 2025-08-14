@@ -71,9 +71,9 @@ export function ScoringTransparencyModal({
 
   const getSourceDisplayName = (source: string): string => {
     const sourceMap: Record<string, string> = {
-      'sanctions': 'ComplyAdvantage Sanctions',
+      'sanctions': 'OpenSanctions (live)',
       'adverseMedia': 'NewsAPI Adverse Media',
-      'pep': 'PEP Screening',
+      'pep': 'OpenSanctions PEP (live)',
       'internalHistory': 'Internal Risk History',
       'countryBaseline': 'Country Risk Baseline'
     };

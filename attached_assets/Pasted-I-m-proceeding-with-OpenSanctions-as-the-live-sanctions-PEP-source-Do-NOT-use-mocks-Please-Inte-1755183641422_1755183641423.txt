@@ -1,0 +1,77 @@
+I’m proceeding with OpenSanctions as the live sanctions/PEP source. Do NOT use mocks.
+
+Please:
+
+Integrate OpenSanctions
+
+Read envs:
+
+SANCTIONS_PROVIDER=opensanctions
+
+OPEN_SANCTIONS_BASE_URL=https://api.opensanctions.org
+
+Implement name/entity search using OpenSanctions API:
+
+Endpoint: GET {OPEN_SANCTIONS_BASE_URL}/search?q={name}&scope=names&limit=25
+
+Parse into normalized sanctions result:
+
+hits_count = total results
+
+lists = unique dataset or sanctioning lists found (from result.datasets or collection)
+
+categories = person/entity types or risk labels if available
+
+top_matches = top 3 matched names with score/confidence
+
+Add timeouts (3s), retries with backoff, and graceful errors → if request fails, set partial_sources to include "sanctions".
+
+Wire into scoring
+
+Use OpenSanctions hits_count and confidence to contribute to the sanctions factor.
+
+Keep existing weights/thresholds; document mapping in code comments and the “How scoring works” modal.
+
+Update the modal and the PDF footer to show: “Sanctions source: OpenSanctions (live)”.
+
+Health and verification
+
+Update /health to include providers:{sanctions:"opensanctions", media:"newsapi"} and show the base URLs.
+
+Run one live risk check and post full JSON (mask PII) showing sanctions.hits_count and any lists found.
+
+Generate a real PDF, upload to S3, and add it to /verification; share the pre‑signed URL.
+
+Countries and Admin readiness
+
+Seed full ISO‑3166 list (~249) and show total via GET /api/countries?page=1&page_size=50.
+
+Ensure Admin CMS and Settings work (no 404), with diagnostics showing providers and /health status.
+
+Verification pack and deploy prep
+
+Refresh /verification with:
+
+seed.sql, curl scripts + sample responses (including OpenSanctions search), a sample PDF, and a short GIF of the full flow.
+
+Provide the public preview URL and the deployment runbook (env vars per service, deploy/rollback steps, post‑deploy checks).
+
+Optional quality details (please implement)
+
+Query normalization: trim, collapse spaces, and use the contractor_name and registration_id (if present) for better precision.
+
+Rate limiting protection: cache identical OpenSanctions queries for 30–60s in Redis to avoid hammering.
+
+Log the exact query sent (mask PII if needed), response time, and status for observability.
+
+Quick manual test after you implement
+
+Try a well-known name (e.g., “John Smith” will likely return few or zero hits; try names known to be on sanctions lists from OpenSanctions examples).
+
+Confirm risk-check JSON shows sanctions: { hits_count: N, lists: [...], top_matches: [...] }.
+
+Confirm partial_sources is empty when the API call succeeds.
+
+If OpenSanctions imposes rate limits from your IP:
+
+Implement a 3s timeout, 2 retries with exponential backoff, and return a clear error message in logs/UI banner. Do not switch to mocks.

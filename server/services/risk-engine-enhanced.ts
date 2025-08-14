@@ -6,7 +6,7 @@ import { SanctionsFactory } from '../providers/sanctions/sanctionsFactory';
 const logger = createChildLogger('risk-engine-enhanced');
 
 // Feature flags for provider selection
-const FEATURE_SANCTIONS_PROVIDER = process.env.SANCTIONS_PROVIDER || 'seon'; // 'seon' | 'amlbot' | 'complyadvantage'
+const FEATURE_SANCTIONS_PROVIDER = process.env.SANCTIONS_PROVIDER || 'opensanctions'; // 'opensanctions' | 'seon' | 'amlbot' | 'complyadvantage'
 const FEATURE_MEDIA_PROVIDER = process.env.FEATURE_MEDIA_PROVIDER || 'mock'; // 'mock' | 'newsapi'
 
 export interface RiskAssessmentRequest {
@@ -206,7 +206,7 @@ export class EnhancedRiskEngine {
   private async checkSanctions(contractorName: string, countryIso: string): Promise<SanctionsCheckResult> {
     if (FEATURE_SANCTIONS_PROVIDER === 'complyadvantage') {
       return await complyAdvantageProvider.checkSanctions(contractorName, countryIso);
-    } else if (FEATURE_SANCTIONS_PROVIDER === 'seon' || FEATURE_SANCTIONS_PROVIDER === 'amlbot') {
+    } else if (FEATURE_SANCTIONS_PROVIDER === 'seon' || FEATURE_SANCTIONS_PROVIDER === 'amlbot' || FEATURE_SANCTIONS_PROVIDER === 'opensanctions') {
       // Use new live sanctions providers
       try {
         const adapter = SanctionsFactory.getAdapter();
@@ -218,6 +218,10 @@ export class EnhancedRiskEngine {
             return match.watchlist.includes('pep');
           } else if ('type' in match) {
             return match.type === 'pep';
+          } else if ('properties' in match) {
+            // OpenSanctions format - check for PEP-related topics
+            const topics = match.properties?.topics || [];
+            return topics.some((topic: string) => topic.toLowerCase().includes('pep'));
           }
           return false;
         });
@@ -227,6 +231,11 @@ export class EnhancedRiskEngine {
             return match.watchlist.includes('sanctions');
           } else if ('type' in match) {
             return match.type === 'sanction';
+          } else if ('properties' in match) {
+            // OpenSanctions format - check for sanctions-related topics or target flag
+            const topics = match.properties?.topics || [];
+            const hasSanctionTopic = topics.some((topic: string) => topic.toLowerCase().includes('sanction'));
+            return hasSanctionTopic || match.target;
           }
           return false;
         });
@@ -243,7 +252,14 @@ export class EnhancedRiskEngine {
             totalMatches: result.matches.length,
             sanctionMatches: sanctionMatches.length,
             pepMatches: pepMatches.length,
-            processedAt: result.metadata.processedAt
+            processedAt: result.metadata.processedAt,
+            // OpenSanctions specific metadata
+            ...(result.metadata.provider === 'opensanctions' && {
+              hits_count: result.metadata.hits_count,
+              lists: result.metadata.lists,
+              top_matches: result.metadata.top_matches,
+              queryNormalized: result.metadata.queryNormalized
+            })
           }
         };
       } catch (error) {

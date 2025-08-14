@@ -1,8 +1,9 @@
 import { SeonSanctionsAdapter } from './seonAdapter';
 import { AmlbotSanctionsAdapter } from './amlbotAdapter';
+import { OpenSanctionsAdapter } from './openSanctionsAdapter';
 import { logger } from '../../lib/logger';
 
-export type SanctionsProvider = 'seon' | 'amlbot';
+export type SanctionsProvider = 'seon' | 'amlbot' | 'opensanctions';
 
 export interface SanctionsResult {
   isMatch: boolean;
@@ -47,6 +48,9 @@ export class SanctionsFactory {
       case 'amlbot':
         this.instance = new AmlbotSanctionsAdapter();
         break;
+      case 'opensanctions':
+        this.instance = new OpenSanctionsAdapter();
+        break;
       default:
         throw new Error(`Unsupported sanctions provider: ${provider}`);
     }
@@ -63,12 +67,13 @@ export class SanctionsFactory {
   static getProviderFromEnv(): SanctionsProvider {
     const provider = process.env.SANCTIONS_PROVIDER?.toLowerCase() as SanctionsProvider;
     
+    // Default to opensanctions if not specified
     if (!provider) {
-      throw new Error('SANCTIONS_PROVIDER environment variable is required (seon|amlbot)');
+      return 'opensanctions';
     }
 
-    if (!['seon', 'amlbot'].includes(provider)) {
-      throw new Error(`Invalid SANCTIONS_PROVIDER: ${provider}. Must be 'seon' or 'amlbot'`);
+    if (!['seon', 'amlbot', 'opensanctions'].includes(provider)) {
+      throw new Error(`Invalid SANCTIONS_PROVIDER: ${provider}. Must be 'seon', 'amlbot', or 'opensanctions'`);
     }
 
     return provider;

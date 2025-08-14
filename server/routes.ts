@@ -39,19 +39,33 @@ export function registerRoutes(app: Express) {
       const [dbCheck] = await db.select({ count: count() }).from(countries).limit(1);
       
       // Check sanctions provider health
-      let sanctionsHealth = { status: 'unknown', provider: 'none' };
+      let sanctionsHealth = { status: 'unknown', provider: 'none', baseUrl: '' };
       try {
         const { SanctionsFactory } = await import('./providers/sanctions/sanctionsFactory');
         const healthResult = await SanctionsFactory.healthCheck();
+        
+        // Get base URL based on provider
+        let baseUrl = '';
+        const provider = healthResult.provider;
+        if (provider === 'opensanctions') {
+          baseUrl = process.env.OPEN_SANCTIONS_BASE_URL || 'https://api.opensanctions.org';
+        } else if (provider === 'seon') {
+          baseUrl = process.env.SEON_API_URL || 'https://api.seon.io';
+        } else if (provider === 'amlbot') {
+          baseUrl = process.env.AMLBOT_API_URL || 'https://api.amlbot.com';
+        }
+        
         sanctionsHealth = {
           status: healthResult.status,
           provider: healthResult.provider,
-          responseTime: healthResult.responseTime
+          responseTime: healthResult.responseTime,
+          baseUrl
         };
       } catch (error) {
         sanctionsHealth = { 
           status: 'error', 
           provider: process.env.SANCTIONS_PROVIDER || 'unknown',
+          baseUrl: '',
           error: error instanceof Error ? error.message : 'Unknown error'
         };
       }
@@ -66,6 +80,10 @@ export function registerRoutes(app: Express) {
         providers: {
           sanctions: sanctionsHealth.provider,
           media: process.env.FEATURE_MEDIA_PROVIDER || 'mock'
+        },
+        provider_urls: {
+          sanctions: sanctionsHealth.baseUrl,
+          media: process.env.FEATURE_MEDIA_PROVIDER === 'newsapi' ? 'https://newsapi.org' : 'mock'
         },
         responseTime: Date.now() - req.start || 0,
         version: '1.0.0'
