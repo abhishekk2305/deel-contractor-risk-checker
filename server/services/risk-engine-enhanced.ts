@@ -127,13 +127,19 @@ export class EnhancedRiskEngine {
       // Calculate internal history score (simulated based on contractor data)
       const internalHistory = this.calculateInternalHistoryScore(request.contractorName, request.contractorType);
       
-      // Calculate weighted overall score
+      // Calculate weighted overall score with NaN protection
+      const validSanctions = isNaN(sanctions) ? 0 : sanctions;
+      const validPep = isNaN(pep) ? 0 : pep;
+      const validAdverseMedia = isNaN(adverseMedia) ? 0 : adverseMedia;
+      const validInternalHistory = isNaN(internalHistory) ? 10 : internalHistory;
+      const validBaseline = isNaN(baseline) ? 25 : baseline;
+
       const overallScore = Math.round(
-        sanctions * this.config.weights.sanctions +
-        pep * this.config.weights.pep +
-        adverseMedia * this.config.weights.adverseMedia +
-        internalHistory * this.config.weights.internalHistory +
-        baseline * this.config.weights.countryBaseline
+        validSanctions * this.config.weights.sanctions +
+        validPep * this.config.weights.pep +
+        validAdverseMedia * this.config.weights.adverseMedia +
+        validInternalHistory * this.config.weights.internalHistory +
+        validBaseline * this.config.weights.countryBaseline
       );
       
       // Determine risk tier

@@ -1,0 +1,61 @@
+Thanks. Please post live evidence and then prep deployment.
+
+Live proofs (paste outputs)
+
+GET /health showing providers:{sanctions:"opensanctions", media:"newsapi"}, build_sha, db/redis/s3:true.
+
+Example risk check
+
+POST /api/risk-check request body you used.
+
+Full JSON response including sanctions.hits_count, lists, top_matches, partial_sources (should be empty), score, tier, ruleset_version.
+
+Countries
+
+GET /api/countries?page=1&page_size=50 → total should be ~249.
+
+GET /api/countries?query=Côte → show diacritic search working.
+
+PDF
+
+POST /api/pdf-report 202 job_id → poll result with pre‑signed URL. Attach the generated PDF and confirm it lists “Sanctions source: OpenSanctions (live)” and formats numbers to two decimals and dates like “Aug 14, 2025.”
+
+Admin
+
+Create/edit/publish a rule for a sample country; paste responses and the new ruleset_versions row; show the corresponding audit_log entry.
+
+Rate limits, retries, and caching
+
+Show the timeout/retry settings for OpenSanctions and NewsAPI.
+
+Demonstrate request de‑duplication: same query within 30–60s returns from cache; show Redis key format and a log excerpt.
+
+Verification pack
+
+Update /verification with:
+
+seed.sql (full ISO‑3166 insert), curl scripts + sample responses (including OpenSanctions search), one sample PDF, a short GIF of the end‑to‑end flow, README with exact steps to reproduce on the public preview.
+
+Deployment prep
+
+Configure Deploys (Always On) for frontend, api, rules-engine, worker.
+
+Post required env vars per service (mask secrets).
+
+Provide the runbook:
+
+Deploy and rollback steps
+
+API_JWT_SECRET rotation steps
+
+Post‑deploy checklist: health, countries total≈249, live risk check success, PDF generated, admin publish works, analytics counters increment.
+
+Nice polish before go‑live
+
+“How scoring works” modal: show weights, thresholds, ruleset_version, and data sources (OpenSanctions + NewsAPI).
+
+Settings page: diagnostics button runs /health and shows green checks for DB/Redis/S3/providers.
+
+Ensure 2‑decimal formatting everywhere (dashboard, country pages, PDFs).
+
+Once you post the proofs and public preview URL, I’ll run the flow end‑to‑end and give the go‑ahead to deploy.
