@@ -93,9 +93,10 @@ export const usePdfReportStatus = (jobId: string | null) => {
       return response.json();
     },
     enabled: !!jobId,
-    refetchInterval: (data) => {
-      // If we have URL (200 response), stop polling, otherwise keep polling
-      if (data?.url) {
+    refetchInterval: (query) => {
+      // If we have URL (200 response), stop polling, otherwise keep polling  
+      const data = query.state?.data as any;
+      if (data?.url || data?.status === 'completed') {
         return false;
       }
       // Keep polling if still pending or processing
