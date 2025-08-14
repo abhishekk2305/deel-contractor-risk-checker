@@ -17,9 +17,14 @@ import {
   FileText, 
   Download, 
   CheckCircle,
-  Clock
+  Clock,
+  Info
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { PdfModal } from '@/components/modals/pdf-modal';
+import { ScoringTransparencyModal } from '@/components/modals/scoring-transparency-modal';
+import { TestDataButton } from '@/components/test-data-button';
+import React from 'react';
 
 interface Country {
   id: string;
@@ -53,6 +58,8 @@ export default function SearchPage() {
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
   const [showRiskForm, setShowRiskForm] = useState(false);
   const [riskResult, setRiskResult] = useState<RiskAssessment | null>(null);
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [showScoringModal, setShowScoringModal] = useState(false);
   
   // Risk assessment form state
   const [contractorName, setContractorName] = useState('');
@@ -67,11 +74,11 @@ export default function SearchPage() {
   const urlSearchParams = new URLSearchParams(window.location.search);
   const initialQuery = urlSearchParams.get('q') || '';
 
-  useState(() => {
+  React.useEffect(() => {
     if (initialQuery) {
       setSearchQuery(initialQuery);
     }
-  });
+  }, [initialQuery]);
 
   const { data: countriesData, isLoading: isSearching } = useQuery({
     queryKey: ['countries', { search: searchQuery, page: 1, limit: 20 }],
@@ -421,7 +428,7 @@ export default function SearchPage() {
                               return recommendations.map((rec, index) => (
                                 <li key={index} className="flex items-start text-sm">
                                   <CheckCircle className="w-4 h-4 mr-2 mt-0.5 text-green-500" />
-                                  {typeof rec === 'string' ? rec : rec?.text || JSON.stringify(rec)}
+                                  {typeof rec === 'string' ? rec : JSON.stringify(rec)}
                                 </li>
                               ));
                             })()}

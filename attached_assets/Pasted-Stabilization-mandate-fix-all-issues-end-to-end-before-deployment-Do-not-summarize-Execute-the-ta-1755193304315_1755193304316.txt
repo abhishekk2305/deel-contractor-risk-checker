@@ -1,0 +1,154 @@
+Stabilization mandate — fix all issues end-to-end before deployment
+Do not summarize. Execute the tasks below and paste hard evidence for each. No known errors should remain.
+
+A) Home/Dashboard quality
+
+Popular Countries logic
+
+Replace alphabetical filler. Define and implement a clear, data-driven rule:
+
+Top N by searchCount in last 7 days, fallback to all-time if low traffic.
+
+Show a tooltip “Ranked by searches in the last 7 days.”
+
+Evidence: paste API used (endpoint + JSON), UI screenshot with ranks and counts.
+
+Counters and charts
+
+Ensure dashboard counters reflect real data (searches, risk checks, PDFs, rules published).
+
+Activity chart must plot actual events; no placeholders.
+
+Evidence: screenshot + API /api/analytics JSON used.
+
+B) Navigation and duplication
+3) Remove redundant nav items
+
+Risk Assessment/Analytics/Admin should appear in one consistent place (top nav). Remove duplicates from country pages unless needed.
+
+Ensure breadcrumbs are accurate and no dead links exist.
+
+Evidence: screenshots of primary nav and country page—no duplicates.
+
+C) Admin CMS and Settings
+4) Admin CMS 404
+
+Fix routing so /admin and subroutes never 404. Use protected routes with clear empty states.
+
+Evidence: open /admin, create/edit/publish a rule successfully; paste responses and no 404 screenshots.
+
+Settings panel content
+
+Add diagnostics in Settings: show env/provider status, build SHA, ruleset version, rate limits, and a “Run diagnostics” button calling /health.
+
+Evidence: screenshot after clicking with green checks.
+
+D) Risk assessment integrity
+6) Scoring transparency
+
+Add “How scoring works” modal on the result page with:
+
+factors with weights, thresholds; example:
+
+sanctions 40%, adverse media 20%, internal history 20%, country baseline 20%
+
+final score formula
+
+active data sources (OpenSanctions live, NewsAPI live)
+
+Evidence: screenshot of the modal and the same details in the PDF footer.
+
+Deterministic sample cases
+
+Add a “Use test data” button that pre-fills:
+
+Case A: John Smith (US) → Expected low risk; sanctions.hits_count ≈ 0
+
+Case B: Vladimir Putin (RU) → Expected high sanctions hits; hits_count > 100; pep=true
+
+Evidence: paste both full JSON responses and UI screenshots.
+
+E) PDF pipeline — must be bulletproof
+8) PDF generation and download
+
+Standardize:
+
+POST /api/pdf-report → 202 {job_id}
+
+GET /api/pdf-report/:id → 200 {url,size_bytes,expires_at}
+
+UI should auto-enable Download and open the pre‑signed URL when ready; show progress if >10s.
+
+Evidence: 202 JSON, poll JSON with working URL, the actual PDF file in /verification, and a screen recording/GIF of the flow.
+
+S3/IAM verification
+
+Paste masked envs are set; bucket/region; IAM policy includes s3:PutObject/GetObject on arn:aws:s3:::BUCKET/*.
+
+Evidence: policy JSON and success logs for one upload.
+
+F) Countries catalog and search
+10) Totals and diacritics
+
+Keep total ≈ 250; search matches for “Côte” and “Cote”.
+
+Evidence: API outputs and UI screenshots.
+
+G) Analytics clarity
+11) Make analytics self-explanatory
+
+Rename axes/legends; split cards: Searches, Risk Checks, PDFs; add time range selector (7/30/90 days).
+
+Evidence: screenshot with recent activity reflecting your own interactions.
+
+H) Reliability, errors, and observability
+12) Remove all runtime errors
+
+Fix any React overlay triggers; add error boundaries so a single bad field doesn’t crash the page.
+
+Evidence: confirm zero overlays during the standard flows; paste console free of red errors.
+
+Security and headers
+
+Paste headers from an admin API showing Helmet/CSP/CORS and rate limit headers.
+
+/metrics and Sentry
+
+/metrics exposes request counters/histograms by route.
+
+Generate a test error and paste Sentry event ID.
+
+I) Final proof pack
+15) Update /verification with:
+
+A README that explains popular-country logic, scoring weights, data sources, and how to reproduce.
+
+seed-countries.sql, curl scripts for risk-check and pdf-report, a working sample PDF, and a 2–3 minute GIF showing search → risk check (both cases) → PDF → admin publish → analytics increment.
+
+J) Acceptance gate
+
+Paste a single message with:
+
+Public preview URL
+
+/health JSON
+
+Popular countries API output
+
+Two risk-check JSONs (John Smith, Vladimir Putin)
+
+PDF 202 + poll JSON + working URL
+
+Admin no-404 screenshots and version history
+
+Analytics API JSON and dashboard screenshot
+
+Security headers snippet
+
+/metrics snippet
+
+Link to /verification folder and sample PDF
+
+I will run my final pass. Only after that, we proceed to deployment.
+
+Please do not reply with summaries until all items above have passing evidence. Any failure should include the exact error and the code diffs you applied to fix it.

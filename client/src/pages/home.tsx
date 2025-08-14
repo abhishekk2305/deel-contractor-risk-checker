@@ -42,10 +42,10 @@ export default function HomePage() {
   });
 
   const { data: countriesData } = useQuery({
-    queryKey: ['countries', { search: '', page: 1, limit: 6 }],
+    queryKey: ['countries', { popular: true, limit: 6 }],
     queryFn: async () => {
-      const response = await fetch('/api/countries?limit=6');
-      if (!response.ok) throw new Error('Failed to fetch countries');
+      const response = await fetch('/api/countries/popular?limit=6');
+      if (!response.ok) throw new Error('Failed to fetch popular countries');
       return response.json();
     },
   });
@@ -185,11 +185,17 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Top Countries */}
+        {/* Popular Countries */}
         <div className="mb-12">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Popular Countries</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Popular Countries</h2>
+            <div className="text-sm text-gray-500 flex items-center">
+              <TrendingUp className="w-4 h-4 mr-1" />
+              <span title="Ranked by searches in the last 7 days">Ranked by recent searches</span>
+            </div>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {countries.slice(0, 6).map((country) => (
+            {countries.slice(0, 6).map((country, index) => (
               <Link key={country.id} href={`/country/${country.iso.toLowerCase()}`}>
                 <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                   <CardContent className="p-6">

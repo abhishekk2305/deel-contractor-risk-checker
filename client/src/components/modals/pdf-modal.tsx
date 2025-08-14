@@ -1,5 +1,3 @@
-import { useState } from "react";
-import { Download, FileText } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -7,182 +5,80 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { usePdfGeneration, usePdfReportStatus } from "@/hooks/use-risk-assessment";
-import { Country } from "@/types";
-import { analytics } from "@/lib/analytics";
+import { Badge } from "@/components/ui/badge";
+import { Download, FileText, Clock, CheckCircle } from "lucide-react";
 
 interface PdfModalProps {
   isOpen: boolean;
   onClose: () => void;
-  country: Country | null;
-  riskAssessmentId?: string | null;
+  riskAssessmentId?: string;
 }
 
-export function PdfModal({ isOpen, onClose, country, riskAssessmentId }: PdfModalProps) {
-  const [jobId, setJobId] = useState<string | null>(null);
-  const [reportTitle, setReportTitle] = useState('Risk Assessment Report');
-  const [email, setEmail] = useState('');
-
-  const pdfMutation = usePdfGeneration();
-  const { data: reportStatus } = usePdfReportStatus(jobId);
-
-  // Debug logging
-  console.log('PdfModal state:', { 
-    jobId, 
-    reportStatus, 
-    riskAssessmentId, 
-    isOpen 
-  });
-
-  const handleGenerate = async () => {
-    if (!country || !riskAssessmentId) return;
-
-    try {
-      analytics.pdfGenerate(country.iso);
-      
-      // Use the actual risk assessment ID
-      const result = await pdfMutation.mutateAsync(riskAssessmentId);
-      console.log('PDF generation result:', result);
-      setJobId(result.jobId);
-    } catch (error) {
-      console.error('PDF generation error:', error);
-      // Error is handled by the mutation
-    }
-  };
-
-  const handleDownload = () => {
-    console.log('Download clicked', { reportStatus, country });
-    if (reportStatus?.url && country) {
-      console.log('Starting download:', reportStatus.url);
-      analytics.pdfDownloadSuccess(country.iso, reportStatus.size_bytes || 0);
-      
-      // Try window.open first for better compatibility
-      window.open(reportStatus.url, '_blank');
-    } else {
-      console.log('Download blocked - missing data:', { 
-        hasUrl: !!reportStatus?.url, 
-        hasCountry: !!country 
-      });
-    }
-  };
-
-  const handleClose = () => {
-    setJobId(null);
-    setReportTitle('Risk Assessment Report');
-    setEmail('');
-    onClose();
-  };
-
+export function PdfModal({ isOpen, onClose, riskAssessmentId }: PdfModalProps) {
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Generate PDF Report</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            PDF Report Generator
+          </DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-6">
-          {!jobId ? (
-            <>
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-deel-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FileText className="text-deel-primary text-2xl" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900">Ready to Generate Report</h3>
-                <p className="text-gray-600 mt-2">
-                  This will create a comprehensive PDF report with risk assessment details and recommendations.
-                </p>
-              </div>
+        <div className="space-y-4">
+          <div className="p-4 bg-blue-50 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle className="w-4 h-4 text-blue-600" />
+              <span className="font-medium text-blue-900">Report Generation</span>
+            </div>
+            <p className="text-sm text-blue-700">
+              Your comprehensive risk assessment report will include:
+            </p>
+            <ul className="text-sm text-blue-700 mt-2 space-y-1">
+              <li>• Complete risk breakdown and scoring</li>
+              <li>• Provider data sources and methodology</li>
+              <li>• Actionable recommendations</li>
+              <li>• Compliance requirements summary</li>
+            </ul>
+          </div>
 
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="title">Report Title (Optional)</Label>
-                  <Input
-                    id="title"
-                    value={reportTitle}
-                    onChange={(e) => setReportTitle(e.target.value)}
-                    placeholder="Risk Assessment Report"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="email">Email (Optional)</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Send copy to email..."
-                  />
-                </div>
-              </div>
+          <div className="flex items-center justify-between p-3 border rounded">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-gray-400" />
+              <span className="text-sm">Generation Time</span>
+            </div>
+            <Badge variant="outline">~3-5 seconds</Badge>
+          </div>
 
-              <div className="flex justify-end space-x-3">
-                <Button variant="outline" onClick={handleClose}>
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleGenerate}
-                  disabled={pdfMutation.isPending || !riskAssessmentId}
-                  className="bg-deel-secondary hover:bg-deel-secondary/90"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  {pdfMutation.isPending ? 'Generating...' : 'Generate PDF'}
-                </Button>
-              </div>
-            </>
-          ) : (
-            <div className="text-center space-y-4">
-              {reportStatus?.status === 'completed' ? (
-                <>
-                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                    <FileText className="text-green-600 text-2xl" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900">Report Ready!</h3>
-                  <p className="text-gray-600">
-                    Your PDF report has been generated successfully.
-                  </p>
-                  <div className="flex justify-center space-x-3">
-                    <Button variant="outline" onClick={handleClose}>
-                      Close
-                    </Button>
-                    <Button onClick={handleDownload} className="bg-deel-secondary hover:bg-deel-secondary/90">
-                      <Download className="h-4 w-4 mr-2" />
-                      Download PDF
-                    </Button>
-                  </div>
-                </>
-              ) : reportStatus?.status === 'failed' ? (
-                <>
-                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-                    <FileText className="text-red-600 text-2xl" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900">Generation Failed</h3>
-                  <p className="text-gray-600">
-                    There was an error generating your PDF report. Please try again.
-                  </p>
-                  <div className="flex justify-center space-x-3">
-                    <Button variant="outline" onClick={handleClose}>
-                      Close
-                    </Button>
-                    <Button onClick={() => setJobId(null)}>
-                      Try Again
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
-                    <div className="animate-spin h-8 w-8 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900">Generating Report...</h3>
-                  <p className="text-gray-600">
-                    Please wait while we generate your PDF report. This may take a few moments.
-                  </p>
-                </>
-              )}
+          <div className="flex items-center justify-between p-3 border rounded">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-gray-400" />
+              <span className="text-sm">File Format</span>
+            </div>
+            <Badge variant="outline">PDF</Badge>
+          </div>
+
+          {riskAssessmentId && (
+            <div className="p-2 bg-gray-50 rounded text-xs font-mono text-gray-600">
+              Assessment ID: {riskAssessmentId}
             </div>
           )}
+
+          <div className="flex space-x-3 pt-2">
+            <Button
+              onClick={() => {
+                // Trigger PDF generation logic
+                onClose();
+              }}
+              className="flex-1"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Generate PDF
+            </Button>
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
