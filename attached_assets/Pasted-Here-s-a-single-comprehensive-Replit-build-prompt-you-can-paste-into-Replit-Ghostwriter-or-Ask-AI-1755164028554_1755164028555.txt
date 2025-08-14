@@ -1,0 +1,229 @@
+Here’s a single, comprehensive Replit build prompt you can paste into Replit (Ghostwriter or “Ask AI”) to scaffold and implement the full, production-quality Global Contractor Risk Checker. It specifies architecture, services, endpoints, schemas, security, tests, and deployment. Replace placeholders in square brackets before running.
+
+Replit Prompt: Build a production-quality Global Contractor Risk Checker for Deel
+
+Goal
+Build a production-quality, Deel-native Global Contractor Risk Checker (GCRC) as a monorepo composed of four services running on Replit:
+- frontend: Next.js + Tailwind CSS
+- api: Node.js (Express + TypeScript)
+- rules-engine: Python (FastAPI)
+- worker: Node (or Python) background worker for PDF and notifications
+
+Use managed services:
+- Supabase Postgres (primary DB)
+- AWS S3 (PDF storage, pre-signed URLs)
+- Upstash Redis (cache + job queue)
+- Sentry (frontend + backend monitoring)
+- Plausible (product analytics)
+- ComplyAdvantage (sanctions/PEP)
+- NewsAPI (adverse media; GDELT acceptable alternative)
+- Postmark (emails for notifications)
+
+Deliverables
+- Fully wired services with environment variables, health checks, and CI-friendly structure.
+- Implement the end-to-end flow: search → country detail → run risk check → generate Deel-branded PDF → admin CMS → analytics.
+- Production practices: input validation, rate limiting, idempotency, logging, error handling, partial-source handling, RBAC, tests, and deployment scripts.
+
+Repository structure (create these folders/files)
+- /frontend
+  - Next.js + Tailwind app with pages: /, /search, /country/[iso], /admin/rules, /admin/analytics
+  - Components: SearchBar, FilterChips, CountryTable, RiskBadge, InfoCard, PDFModal, NotificationsToggle, Skeletons, ErrorBanner
+  - libs: api client, analytics hooks (Plausible), Sentry init
+  - .env.example with NEXT_PUBLIC_API_BASE and analytics DSNs
+- /api
+  - Node + Express + TypeScript
+  - src/index.ts (server), src/routes (countries, risk-check, pdf-report, admin), src/middleware (auth, rate-limit, request-id, error), src/lib (db, s3, redis), src/schemas (Zod), src/logging (pino)
+  - Package scripts for dev, build, start
+  - Jest + Supertest config
+  - .env.example with DB, S3, Redis, provider keys, Sentry DSN
+- /rules-engine
+  - FastAPI app (app/main.py)
+  - app/adapters (sanctions_pep_adapter.py, adverse_media_adapter.py, internal_history_adapter.py)
+  - app/services (scoring_service.py with deterministic weights and tier mapping)
+  - app/config.py (timeouts, retries, circuit breaker thresholds)
+  - app/schemas.py (Pydantic models: request, response)
+  - requirements.txt; uvicorn run script
+  - .env.example with DB, Redis, provider keys
+- /worker
+  - Node (TypeScript) or Python worker consuming Redis queue
+  - Jobs: pdf.generate (contractor_id), notifications.send
+  - lib/pdf.ts (Puppeteer HTML→PDF with Deel branding), lib/s3.ts (upload + pre-signed), lib/postmark.ts (email)
+  - .env.example with S3, Postmark, DB, Redis
+- /infra (optional now; add later for IaC)
+- /docs (already present)
+- root-level README.md, SECURITY.md, CONTRIBUTING.md, LICENSE (MIT), and GitHub Actions workflows (lint/test placeholders)
+
+Environment variables (create .env.example per service and read via process.env or dotenv)
+Common
+- API_JWT_SECRET=[random-string]
+- POSTGRES_URL=[Supabase-connection-string]
+- REDIS_URL=[Upstash-redis-url]
+- S3_REGION=[e.g., us-east-1]
+- S3_BUCKET=[your-bucket]
+- S3_ACCESS_KEY_ID=[iam-user]
+- S3_SECRET_ACCESS_KEY=[iam-secret]
+- SANCTIONS_API_KEY=[ComplyAdvantage]
+- NEWS_API_KEY=[NewsAPI]
+- POSTMARK_TOKEN=[Postmark-server-token]
+- SENTRY_DSN_FE=[Sentry frontend DSN]
+- SENTRY_DSN_BE=[Sentry backend DSN]
+Frontend
+- NEXT_PUBLIC_API_BASE=[https://your-api-repl-url]
+- NEXT_PUBLIC_PLAUSIBLE_DOMAIN=[your-domain-for-analytics]
+API
+- RULES_ENGINE_BASE_URL=[https://your-rules-engine-repl-url]
+
+Database schema (Supabase SQL; create migrations)
+Tables
+- countries (id PK, iso text unique, name text, last_updated timestamptz)
+- compliance_rules (id PK, country_id FK, rule_type text, description text, severity int, effective_from date, source_url text, status text check in [‘draft’, ‘published’], version int, updated_at timestamptz default now())
+- ruleset_versions (id PK, country_id FK, version int, published_at timestamptz, notes text)
+- contractors (id PK, name text, country_id FK, type text check in [‘independent’, ‘eor’, ‘freelancer’], payment_method text check in [‘wire’, ‘ach’, ‘crypto’, ‘paypal’], registration_id text, created_at timestamptz default now())
+- risk_scores (id PK, contractor_id FK, score int, tier text check in [‘low’, ‘medium’, ‘high’], top_risks jsonb, recommendations jsonb, penalty_range text, partial_sources jsonb, ruleset_version int, created_at timestamptz default now())
+- pdf_reports (id PK, contractor_id FK, url text, size_bytes int, generated_at timestamptz default now())
+- audit_logs (id PK, actor text, action text, entity text, entity_id text, diff jsonb, created_at timestamptz default now())
+- subscriptions (id PK, user_id text, country_id FK, created_at timestamptz default now())
+Indexes
+- idx_countries_iso, idx_rules_country_status, idx_scores_contractor_created, idx_ruleset_versions_country_version
+Seed
+- Insert 20–30 key countries with iso/name/last_updated
+- Insert minimal compliance_rules with severity and descriptions; create initial ruleset_versions
+
+API service (Express + TS)
+Middleware
+- request-id (uuid), pino logger, Helmet + CSP, strict CORS (frontend origin), express-rate-limit (e.g., 100/min/IP), JWT auth (RBAC: admin vs user), Zod validation, centralized error handler
+Endpoints (implement fully)
+- GET /health → {status: “ok”}
+- GET /api/countries
+  - Query params: query, type, payment, page, page_size, sort
+  - Returns: paginated {items, total, page, page_size}
+- POST /api/risk-check
+  - Headers: Idempotency-Key (optional but implement)
+  - Body (Zod): { contractor_name?, country_iso, contractor_type, payment_method, registration_id? }
+  - Flow: validate → call rules-engine /score → persist contractors + risk_scores → return result {score, tier, top_risks, recommendations, penalty_range, partial_sources, ruleset_version}
+  - Rate limit per user: e.g., 10/min
+- POST /api/pdf-report
+  - Body: { contractor_id }
+  - Flow: enqueue job in Redis; 202 Accepted with {job_id}; also provide GET /api/pdf-report/:id to poll; when ready, return {url, size_bytes}
+- Admin (JWT + RBAC=admin):
+  - POST /api/admin/rules (create draft)
+  - PUT /api/admin/rules/:id (update)
+  - DELETE /api/admin/rules/:id
+  - POST /api/admin/rules/:id/publish → writes ruleset_versions and sets status=published
+  - GET /api/admin/rules/versions?country=ISO
+  - GET /api/admin/analytics?from=&to= (aggregate searches, risk_checks, pdfs)
+
+Observability
+- Log each request (method, path, status, duration)
+- Sentry capture exceptions
+- Add basic metrics (counters, histograms) if feasible
+
+Rules-engine (FastAPI)
+- POST /health → {status:“ok”}
+- POST /score
+  - Request: { country_iso, contractor_type, payment_method, registration_id?, contractor_name? }
+  - Adapters (timeouts 2–3s, retries with backoff, circuit breaker):
+    - internal_history_adapter: queries Postgres for recent risk scores for same contractor/country
+    - sanctions_pep_adapter: ComplyAdvantage; normalize to {hits_count, categories}
+    - adverse_media_adapter: NewsAPI (or GDELT); normalize to {mentions_count, top_keywords}
+  - Scoring (deterministic; make weights configurable)
+    - v1 weights: sanctions 0.45, pep 0.15, adverse_media 0.15, internal_history 0.15, country_baseline 0.10
+    - Map to score 0–100; tier mapping: =67 high (read from config/DB)
+  - Output:
+    - { score, tier, top_risks: , recommendations: [3–5], penalty_range, partial_sources: [], ruleset_version }[1]
+  - If any adapter fails or times out: include its name in partial_sources; still return score (penalize with conservative default)
+
+Worker (Node or Python)
+- Redis consumer listening for jobs:
+  - pdf.generate: { contractor_id }
+- PDF generation (Puppeteer)
+  - HTML template with Deel branding (logo, colors)
+  - Include contractor summary (if present), country, score, tier, top risks, recommendations, penalties, ruleset_version, timestamp, and partial-source note
+  - Upload to S3; record to pdf_reports; return pre-signed URL (5-min expiry)
+- Email (Postmark)
+  - Optional: send notification with download link
+- Guardrails: 10s timeout per job, retry up to 3 times, exponential backoff, memory-safe launch args for Puppeteer
+
+Frontend (Next.js + Tailwind)
+Pages and flows
+- / (Landing): search input, filters (contractor_type, payment_method), featured countries (chips with risk badges), CTA to learn how scoring works
+- /search: paginated table (Country | Risk | Last Updated) with filter controls; skeletons; empty and error states
+- /country/[iso]: detail cards (Risk badge, Top 3 risks, Recommendations, Penalty range, Last updated, Sources); actions: Run Risk Check, Download PDF
+- /admin/rules: table (Country | Rule Type | Severity | Updated | Status | Actions); editor with fields and version history; draft→publish workflow; audit log toast
+- /admin/analytics: KPI cards (searches, risk checks, PDFs), line chart (searches/time), bar chart (tier distribution), top countries list
+Components
+- Implement skeleton loaders, error banners, partial-source warning (amber)
+- RiskBadge with ARIA label “Risk level: High/Medium/Low”
+- PDFModal with optional Name/Email fields (if public gating added later)
+State and data
+- TanStack Query for data fetching with retries and backoff
+- Fire analytics events per Analytics-and-Metrics.md:
+  - search_submit, filter_change, country_view
+  - risk_check_request/success/error
+  - pdf_click/generate/download_success
+  - admin_rule_publish
+Accessibility
+- WCAG 2.1 AA; keyboard nav; aria-live for async status; focus-visible styles; high-contrast badges
+
+Security and compliance
+- Input validation on both FE and BE
+- Helmet + CSP on API; strict CORS
+- JWT auth with RBAC; rotate secrets regularly
+- Rate limiting and idempotency (risk-check)
+- Audit logs for admin actions
+- PII minimization (store only what’s necessary; hash emails if public mode later)
+- GDPR basics: data retention policies (define: e.g., raw logs 90 days, aggregated metrics 12 months)
+
+Testing (add tests and sample commands)
+- API: Jest + Supertest
+  - Test /api/countries pagination/filters
+  - Test /api/risk-check happy path, validation errors, idempotency, rate-limit
+  - Test admin rule publish writes ruleset_versions
+- Rules-engine: Pytest
+  - Test scoring with fixtures and mocked adapters
+  - Test partial-source penalties
+- Frontend: Playwright or Cypress
+  - E2E: search → country detail → run risk check → generate PDF (poll until ready) → download
+- Load test (optional): Artillery or k6 script for /api/risk-check and /api/countries
+
+Deployment on Replit
+- Create 4 Repls: frontend, api, rules-engine, worker
+- Add env vars to each Repl
+- Start commands:
+  - frontend: npm run dev (or build/start for deploy)
+  - api: npm run build && npm run start
+  - rules-engine: uvicorn app.main:app --host 0.0.0.0 --port 8000
+  - worker: node dist/index.js (after tsc build)
+- Health endpoints:
+  - API: GET /health
+  - Rules-engine: POST /health
+  - Worker: expose /health if HTTP, or log heartbeat every N seconds
+- Uptime monitoring: add health URLs to Better Stack/UptimeRobot
+- Sentry: initialize in FE and API; capture errors and performance traces
+
+Success criteria (acceptance)
+- p95 latency: /api/risk-check <= 2s with providers responding; /api/countries <= 500ms
+- PDF generation p95 <= 5s via worker; pre-signed S3 download works
+- Admin CMS: draft→publish creates a new ruleset_version and invalidates caches
+- Analytics events sent on key actions; admin analytics page shows aggregates
+- Error handling: partial sources banner displayed; 429 rate limit shows retry-after
+- Security: JWT-protected admin routes; Helmet + CSP; inputs validated; audit logs recorded
+
+Notes
+- Keep provider adapters abstracted with interfaces; start with live ComplyAdvantage + NewsAPI if keys are available, otherwise provide mock adapters behind feature flags to swap later.
+- If Puppeteer performance is constrained, allow switching to a third-party PDF API via env flag without code refactor.
+
+Now generate:
+1) All 4 service skeletons with the folder structure, package files, and base code.
+2) Supabase SQL for schema + seeds.
+3) API routes with Zod schemas, rate limiting, idempotency, and error handling.
+4) FastAPI scoring endpoint with adapter stubs and a working (mockable) scoring function.
+5) Worker queue consumer with Puppeteer template and S3 uploader.
+6) Frontend pages/components with loading/error states and analytics hooks.
+7) .env.example files for each service listing required variables.
+8) Basic tests (API, rules-engine) and one E2E script scaffold.
+9) A short “Run locally on Replit” section in README.
+
+End of prompt.
+
+[1] https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/50977892/078b4979-ba39-4d45-9d39-d5f492efd6c4/TSD.md
