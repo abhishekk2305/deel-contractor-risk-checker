@@ -1,0 +1,112 @@
+Thanks. Please run a full end-to-end verification and share artifacts. Do the following and post outputs/screenshots, sample payloads, and console logs:
+
+Database + seed verification
+
+Print the schema (countries, compliance_rules, ruleset_versions, contractors, risk_scores, pdf_reports, audit_logs).
+
+SELECT counts per table and list 10 sample countries with last_updated.
+
+Show a published ruleset_version for at least 3 countries.
+
+API routes (live URLs + cURL examples)
+
+GET /health and /api/countries?query=an&page=1&page_size=10
+
+POST /api/risk-check (with example JSON) and show 200 response {score, tier, top_risks, recommendations, penalty_range, partial_sources, ruleset_version}.
+
+POST /api/pdf-report for the contractor_id created above; return 202 with job_id; then GET poll until url is ready.
+
+Admin:
+
+POST /api/admin/rules (draft), PUT update, POST publish → return version entry.
+
+GET /api/admin/rules/versions?country=IN
+
+External adapters and partial-source handling
+
+For sanctions/PEP and adverse media adapters, print which provider is active (real vs mock) and current timeouts.
+
+Simulate one adapter timeout and show partial_sources in the risk-check response and the yellow banner in UI.
+
+Frontend flow demo (screenshots/videos)
+
+Search (query='an') → results table populated.
+
+Country detail (e.g., IN) with risk badge, top 3 risks, recommendations, penalty range, last_updated.
+
+Run risk check → show results card populated.
+
+Download PDF → toast + file download; open the PDF and show header/footer, score, tier, top risks, recommendations, penalties, ruleset_version, timestamp.
+
+Admin: create rule → publish → version history diff → audit log entry visible.
+
+Analytics dashboard reflects increments (searches, checks, PDFs).
+
+Observability and limits
+
+Show Sentry is initialized (FE/BE). Trigger a handled error and show it appears in Sentry.
+
+Show rate limit: call risk-check >10 times/min and demonstrate 429 with Retry-After header.
+
+Show idempotency: send same POST /api/risk-check with same Idempotency-Key and receive same result.
+
+Environment/config checklist
+
+Print required env vars and which are set (mask secrets).
+
+If any provider key missing, confirm mock mode and list the flag to switch to real mode.
+
+Security checks
+
+Confirm Helmet/CSP, strict CORS, JWT RBAC on admin routes, and audit logs on rule changes.
+
+Provide sample audit log row for the publish action.
+
+When done, post:
+
+cURL commands + responses
+
+SQL used for seed
+
+Screenshots of each UI step and the generated PDF
+
+A short Loom-style GIF or video of the full flow.”
+
+How you will know everything is actually working
+Use this acceptance checklist while you review Replit’s outputs:
+
+Functional
+
+Countries load with real data; search and filters work.
+
+Country detail shows risk badge, top 3 risks, recommendations, penalties, last_updated.
+
+Risk check returns 200 with score/tier and a non-empty top_risks/recommendations list.
+
+Partial-source scenario shows partial_sources in API and a yellow banner in UI.
+
+PDF job returns a downloadable URL; the PDF contains all sections and the ruleset_version.
+
+Admin can create/edit/publish rules; a new ruleset_version is recorded; version diff is visible; audit_logs updated.
+
+Analytics dashboard counters increase after your interactions.
+
+APIs
+
+All sample cURL requests succeed; the responses match the schema; pagination works.
+
+Idempotency works; rate limiting returns 429 with Retry-After.
+
+Data
+
+Tables exist with expected counts; ruleset_versions present for multiple countries.
+
+Observability/Security
+
+Sentry receives a test error event.
+
+/health endpoints return ok.
+
+Admin routes reject unauthenticated calls (401/403).
+
+CORS/Helmet/CSP present in response headers
