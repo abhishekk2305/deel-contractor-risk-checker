@@ -1,0 +1,91 @@
+Thanks—looks strong. Please complete the following before deployment:
+
+UI/UX polish
+
+Risk Distribution cards: format numeric values to two decimals (e.g., 3.60, 1.80, 0.60). Use a formatter utility with locale-aware rounding and trailing zeroes, not string truncation. Apply the same to any score/tier visualizations.
+
+Country cards and tables: ensure Last Updated shows a human-friendly format (e.g., “Aug 14, 2025”).
+
+Risk badge ARIA labels: announce “Risk level: High/Medium/Low” for screen readers.
+
+Empty/partial states:
+
+If partial_sources not empty, show the amber banner with a short “Some data sources timed out; results may be partial” message and an info link.
+
+Add “No results” state for search with a Reset Filters button.
+
+Data completeness
+
+Seed at least 30 countries (target list: US, CA, UK, DE, FR, NL, ES, IT, SE, NO, DK, IE, PL, PT, SG, IN, AU, NZ, JP, KR, CN, HK, TW, AE, SA, BR, MX, AR, CL, ZA) with last_updated and minimal compliance rules, so the demo looks full.
+
+Ensure ruleset_versions exist for minimum 5 countries to demonstrate versioning.
+
+Scoring transparency
+
+Add a small “How scoring works” modal on Risk Check Results with:
+
+Current weights, tier thresholds, ruleset_version, and the list of contributing sources (and which ones were partial).
+
+Include the same footer in the generated PDF.
+
+Analytics and monitoring
+
+Confirm Plausible events fire for search_submit, country_view, risk_check_success, pdf_generate, pdf_download_success, admin_rule_publish.
+
+Expose /metrics for Prometheus with request_count and duration histograms by route.
+
+/health should include build SHA and a quick DB/Redis/S3 check.
+
+Security and limits
+
+Confirm Helmet/CSP, strict CORS (frontend origin only), JWT RBAC on admin routes.
+
+Prove idempotency: same Idempotency-Key on /api/risk-check returns the cached result.
+
+Rate limit: show 429 with Retry-After header when exceeded.
+
+Mask PII in logs; ensure email (if ever captured) is hashed or omitted.
+
+Artifacts
+
+Add a /verification folder with:
+
+curl scripts + sample responses for all endpoints.
+
+Seed SQL and migration files.
+
+One generated PDF sample.
+
+Screenshot(s) of the partial_sources banner.
+
+Sentry test error ID and an uptime check URL.
+
+Deployment prep
+
+Provide a step-by-step deploy runbook:
+
+Required env vars per service (list, mask secrets).
+
+Rolling deploy steps and rollback procedure for each Repl.
+
+Post-deploy verification checklist (health checks, metrics, sample risk check, PDF).
+
+If possible, set custom domain for frontend and confirm SSL.
+
+Optional improvements (nice-to-have)
+
+Add GET /api/risk-check/:id to retrieve historical results.
+
+Admin diff view: highlight added/removed/changed rule text between versions.
+
+CSV export of analytics for a selected date range.
+
+Please implement the above, post before/after screenshots for the UI number formatting and partial banner, and share the public preview URL where I can run the flow end-to-end.
+
+Notes on the vague numbers
+
+The Risk Distribution cards currently show excessive decimal precision. Use a shared numberFormat utility:
+
+formatScore(n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+Apply consistently across the dashboard and PDF.

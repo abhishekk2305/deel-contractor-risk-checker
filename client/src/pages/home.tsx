@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Search, TrendingUp, Users, FileText, BarChart3, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { formatDate, formatScore } from '@/lib/formatters';
 
 interface Country {
   id: string;
@@ -198,7 +199,7 @@ export default function HomePage() {
                     </div>
                     <div className="flex items-center text-sm text-gray-500">
                       <TrendingUp className="w-4 h-4 mr-1" />
-                      Updated {new Date(country.lastUpdated).toLocaleDateString()}
+                      Updated {formatDate(country.lastUpdated)}
                     </div>
                   </CardContent>
                 </Card>

@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ChartSkeleton } from "@/components/shared/loading-skeleton";
 import { AnalyticsData } from "@/types";
+import { formatScore } from "@/lib/formatters";
 
 interface RiskDistributionProps {
   data: AnalyticsData | undefined;
@@ -64,7 +65,7 @@ export function RiskDistribution({ data, isLoading }: RiskDistributionProps) {
                   <span className="text-sm font-medium text-gray-700">{tier.label}</span>
                 </div>
                 <span className="text-sm font-medium text-gray-900">
-                  {tier.value.toLocaleString()} ({tier.percentage.toFixed(1)}%)
+                  {formatScore(tier.value)} ({tier.percentage.toFixed(1)}%)
                 </span>
               </div>
               <Progress 

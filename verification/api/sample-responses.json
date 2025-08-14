@@ -1,0 +1,333 @@
+{
+  "health_check": {
+    "endpoint": "/health",
+    "method": "GET",
+    "response": {
+      "status": "healthy",
+      "timestamp": "2025-08-14T11:38:23.443Z",
+      "version": "1.0.0",
+      "buildSha": "e0999a47-8db6-4a1f-b08a-878963124ed6",
+      "uptime": 190674,
+      "checks": {
+        "database": true,
+        "redis": true,
+        "recentActivity": true
+      },
+      "rulesetVersion": 1,
+      "metrics": {
+        "totalRequests": 120,
+        "errorRate": 1.5,
+        "averageResponseTime": 148.32,
+        "p95ResponseTime": 421,
+        "requestsPerMinute": 2.1
+      }
+    }
+  },
+  "metrics_json": {
+    "endpoint": "/metrics?format=json",
+    "method": "GET", 
+    "response": {
+      "request_duration_seconds": {
+        "type": "histogram",
+        "help": "Request duration in seconds",
+        "buckets": {
+          "0.1": 45,
+          "0.25": 78,
+          "0.5": 102,
+          "1.0": 115,
+          "2.5": 118,
+          "5.0": 120,
+          "+Inf": 120
+        }
+      },
+      "request_count_total": {
+        "type": "counter",
+        "help": "Total number of requests",
+        "value": 120,
+        "labels": {
+          "method": ["GET", "POST"],
+          "route": ["/api/countries", "/api/risk-check", "/api/analytics"],
+          "status_code": ["200", "400", "404", "500"]
+        }
+      },
+      "active_connections": {
+        "type": "gauge",
+        "help": "Number of active connections",
+        "value": 12
+      }
+    }
+  },
+  "countries_list": {
+    "endpoint": "/api/countries?page=1&limit=5",
+    "method": "GET",
+    "response": {
+      "countries": [
+        {
+          "id": "e80c377e-cb2b-45f5-9f78-9603599cd7df",
+          "iso": "US",
+          "name": "United States",
+          "flag": "🇺🇸",
+          "lastUpdated": "2025-08-13T11:38:00.000Z"
+        },
+        {
+          "id": "32a51bdc-766a-4f42-880a-a1804220499c",
+          "iso": "GB",
+          "name": "United Kingdom", 
+          "flag": "🇬🇧",
+          "lastUpdated": "2025-08-13T11:38:00.000Z"
+        },
+        {
+          "id": "aadf9cd8-8be2-4a48-812d-d7786c65ac99",
+          "iso": "DE",
+          "name": "Germany",
+          "flag": "🇩🇪", 
+          "lastUpdated": "2025-08-13T11:38:00.000Z"
+        },
+        {
+          "id": "cccb2f42-973a-4075-85f1-a44a9209bffd",
+          "iso": "CA",
+          "name": "Canada",
+          "flag": "🇨🇦",
+          "lastUpdated": "2025-08-11T11:38:00.000Z"
+        },
+        {
+          "id": "c95c405b-4e7f-422a-8deb-c7acf9084066",
+          "iso": "FR",
+          "name": "France",
+          "flag": "🇫🇷",
+          "lastUpdated": "2025-08-11T11:38:00.000Z"
+        }
+      ],
+      "pagination": {
+        "page": 1,
+        "limit": 5,
+        "total": 30,
+        "pages": 6
+      }
+    }
+  },
+  "risk_assessment_success": {
+    "endpoint": "/api/risk-check",
+    "method": "POST",
+    "request": {
+      "contractorName": "John Smith",
+      "contractorEmail": "john.smith@example.com",
+      "countryIso": "US", 
+      "contractorType": "independent",
+      "registrationId": "US123456789"
+    },
+    "response": {
+      "success": true,
+      "result": {
+        "id": "92a3da49-c840-4e1a-92d9-0ae3aec2ac6d",
+        "contractorId": "e1d9c222-0a23-4912-9509-cb73b6fa5b27",
+        "overallScore": 28.5,
+        "riskTier": "low",
+        "topRisks": [
+          "Standard compliance requirements",
+          "United States regulatory environment",
+          "Cross-border payment considerations"
+        ],
+        "recommendations": [
+          "Review local employment laws",
+          "Ensure proper tax compliance", 
+          "Maintain updated contractor agreements"
+        ],
+        "penaltyRange": "$1,000 - $15,000",
+        "partialSources": [],
+        "breakdown": {
+          "sanctions": 0,
+          "pep": 0,
+          "adverseMedia": 5,
+          "internalHistory": 8,
+          "countryBaseline": 15
+        },
+        "providerInfo": {
+          "sanctions": {
+            "provider": "ComplyAdvantage",
+            "status": "success",
+            "confidence": 95,
+            "matches": 0
+          },
+          "adverseMedia": {
+            "provider": "NewsAPI",
+            "status": "success", 
+            "confidence": 88,
+            "articlesFound": 2,
+            "sentiment": "neutral"
+          }
+        },
+        "generatedAt": "2025-08-14T11:38:10.199Z",
+        "expiresAt": "2025-08-15T11:38:10.199Z"
+      }
+    }
+  },
+  "risk_assessment_high_risk": {
+    "endpoint": "/api/risk-check",
+    "method": "POST",
+    "request": {
+      "contractorName": "Ahmed Hassan",
+      "contractorEmail": "ahmed.hassan@example.com",
+      "countryIso": "IR",
+      "contractorType": "independent"
+    },
+    "response": {
+      "success": true,
+      "result": {
+        "id": "a8f3bc21-d456-4e8a-b123-9876543210ab",
+        "contractorId": "f5e4d3c2-b1a0-4987-8765-432109876543",
+        "overallScore": 87.2,
+        "riskTier": "high",
+        "topRisks": [
+          "High-risk jurisdiction",
+          "Sanctions screening concerns",
+          "Complex regulatory environment",
+          "Enhanced due diligence required"
+        ],
+        "recommendations": [
+          "Conduct enhanced due diligence",
+          "Legal consultation strongly recommended",
+          "Consider alternative engagement structures",
+          "Implement additional monitoring controls"
+        ],
+        "penaltyRange": "$50,000 - $1,000,000",
+        "partialSources": ["adverse-media-timeout"],
+        "breakdown": {
+          "sanctions": 35,
+          "pep": 15,
+          "adverseMedia": 25,
+          "internalHistory": 12,
+          "countryBaseline": 45
+        },
+        "providerInfo": {
+          "sanctions": {
+            "provider": "ComplyAdvantage",
+            "status": "success",
+            "confidence": 92,
+            "matches": 2
+          },
+          "adverseMedia": {
+            "provider": "NewsAPI",
+            "status": "timeout",
+            "confidence": 0,
+            "fallbackScore": 25
+          }
+        },
+        "generatedAt": "2025-08-14T11:38:12.544Z",
+        "expiresAt": "2025-08-15T11:38:12.544Z"
+      }
+    }
+  },
+  "analytics_dashboard": {
+    "endpoint": "/api/analytics",
+    "method": "GET",
+    "response": {
+      "searchCount": 156,
+      "riskCheckCount": 89,
+      "pdfGenerationCount": 34,
+      "rulePublishCount": 12,
+      "topCountries": [
+        {"country": "United States", "count": 28.50},
+        {"country": "United Kingdom", "count": 18.20},
+        {"country": "Germany", "count": 15.80},
+        {"country": "Canada", "count": 12.60},
+        {"country": "Australia", "count": 9.40}
+      ],
+      "riskTierDistribution": [
+        {"tier": "low", "count": 34.60},
+        {"tier": "medium", "count": 21.80},
+        {"tier": "high", "count": 8.20}
+      ],
+      "recentActivity": [
+        {
+          "event": "risk_check_success",
+          "timestamp": "2025-08-14T11:38:10.137Z",
+          "metadata": {
+            "contractorName": "John Smith",
+            "countryIso": "US",
+            "overallScore": 28.5,
+            "riskTier": "low"
+          }
+        },
+        {
+          "event": "pdf_generate",
+          "timestamp": "2025-08-14T11:37:45.891Z", 
+          "metadata": {
+            "contractorName": "Emma Watson",
+            "contractorId": "abc123",
+            "riskTier": "medium"
+          }
+        }
+      ]
+    }
+  },
+  "pdf_generation": {
+    "endpoint": "/api/pdf-generate",
+    "method": "POST",
+    "request": {
+      "riskAssessmentId": "92a3da49-c840-4e1a-92d9-0ae3aec2ac6d",
+      "includeDetails": true
+    },
+    "response": {
+      "success": true,
+      "pdfUrl": "/api/pdf/download/92a3da49-c840-4e1a-92d9-0ae3aec2ac6d",
+      "filename": "risk_assessment_john_smith_20250814.pdf",
+      "generatedAt": "2025-08-14T11:38:15.234Z",
+      "expiresAt": "2025-08-21T11:38:15.234Z",
+      "size": 847392
+    }
+  },
+  "error_responses": {
+    "validation_error": {
+      "endpoint": "/api/risk-check",
+      "method": "POST",
+      "request": {
+        "contractorName": "",
+        "countryIso": "INVALID"
+      },
+      "response": {
+        "error": "Validation failed",
+        "details": [
+          {
+            "code": "too_small",
+            "minimum": 1,
+            "type": "string",
+            "inclusive": true,
+            "exact": false,
+            "message": "Contractor name is required",
+            "path": ["contractorName"]
+          },
+          {
+            "code": "invalid_string",
+            "validation": "regex", 
+            "message": "Invalid country ISO code",
+            "path": ["countryIso"]
+          }
+        ]
+      }
+    },
+    "rate_limit_error": {
+      "endpoint": "/api/countries",
+      "method": "GET",
+      "response": {
+        "error": "Too many requests",
+        "message": "Rate limit exceeded. Please try again later.",
+        "retryAfter": 900
+      },
+      "headers": {
+        "Retry-After": "900",
+        "X-RateLimit-Limit": "100",
+        "X-RateLimit-Remaining": "0",
+        "X-RateLimit-Reset": "1723641515"
+      }
+    },
+    "not_found": {
+      "endpoint": "/api/nonexistent",
+      "method": "GET",
+      "response": {
+        "error": "Not found",
+        "message": "The requested resource was not found"
+      }
+    }
+  }
+}
