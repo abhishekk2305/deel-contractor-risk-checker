@@ -8,6 +8,7 @@ import { RiskBreakdown } from "@/components/country/risk-breakdown";
 import { RiskCheckModal } from "@/components/modals/risk-check-modal";
 import { PdfModal } from "@/components/modals/pdf-modal";
 import { ErrorBanner } from "@/components/shared/error-banner";
+import { DataSourcesInfo } from "@/components/shared/data-sources-info";
 import { useCountry } from "@/hooks/use-countries";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -161,21 +162,24 @@ export default function CountryDetail() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Data Sources</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>Data Sources</CardTitle>
+                <DataSourcesInfo />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-sm text-gray-700">ComplyAdvantage</span>
+                    <span className="text-sm text-gray-700">OpenSanctions (live)</span>
                   </div>
                   <span className="text-xs text-gray-500">Active</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-sm text-gray-700">NewsAPI</span>
+                    <span className="text-sm text-gray-700">NewsAPI (live)</span>
                   </div>
                   <span className="text-xs text-gray-500">Active</span>
                 </div>

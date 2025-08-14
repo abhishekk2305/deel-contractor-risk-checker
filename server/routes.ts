@@ -17,6 +17,15 @@ import { createChildLogger } from "./lib/logger";
 const logger = createChildLogger('routes');
 
 export function registerRoutes(app: Express) {
+  // Security headers (temporarily disabled for build)
+  // TODO: Add proper security headers middleware
+  app.use((req, res, next) => {
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    next();
+  });
+  
   // Apply metrics middleware globally
   app.use(metricsMiddleware);
   

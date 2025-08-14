@@ -31,6 +31,13 @@ export function CountryHeader({ country, onRunRiskCheck, onGeneratePDF }: Countr
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{country.name}</h1>
               <p className="text-gray-600">ISO Code: {country.iso}</p>
+              <p className="text-sm text-gray-500">
+                Last updated: {new Date(country.lastUpdated).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric'
+                })}
+              </p>
             </div>
           </div>
           <div className="text-right">
