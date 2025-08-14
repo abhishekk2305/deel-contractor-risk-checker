@@ -237,17 +237,18 @@ export function registerRoutes(app: Express) {
       const { EnhancedRiskEngine } = await import('./services/risk-engine-enhanced');
       const riskEngine = new EnhancedRiskEngine();
       
-      const riskResult = await riskEngine.assessRisk({
+      const result = await riskEngine.assessRisk({
         contractorName: validatedData.contractorName,
         contractorEmail: validatedData.contractorEmail,
         countryIso: validatedData.countryIso,
         contractorType: validatedData.contractorType
       });
 
-      const overallScore = riskResult.overallScore;
-      const riskTier = riskResult.riskTier;
-      const topRisks = riskResult.topRisks.map(risk => risk.title);
-      const recommendations = riskResult.recommendations;
+      // Extract key fields for database storage
+      const overallScore = result.overallScore;
+      const riskTier = result.riskTier;
+      const topRisks = result.topRisks;
+      const recommendations = result.recommendations;
 
       // Store risk score
       const [riskScore] = await db.insert(riskScores).values({
@@ -278,17 +279,7 @@ export function registerRoutes(app: Express) {
 
       res.json({
         success: true,
-        result: {
-          id: riskScore.id,
-          contractorId: contractor.id,
-          overallScore: overallScore,
-          riskTier: riskTier,
-          topRisks: topRisks,
-          recommendations: recommendations,
-          penaltyRange: `$5,000 - $50,000`,
-          generatedAt: new Date(),
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
-        }
+        result: result
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
