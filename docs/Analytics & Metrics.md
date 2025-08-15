@@ -5,6 +5,10 @@ Date: 14/08/2025
 
 Measurement goals
 
+"Business Value Mapping":
+
+Metrics like funnel conversion, PDF downloads, and risk check performance roll up to core business outcomes: reduced misclassification, decreased hiring lead time, and lower compliance support load. Initial dashboards focus on funnel stages and error rates to drive both product and business decisions.
+
 Demonstrate adoption, value, and reliability
 
 Identify friction points in search → detail → PDF funnel
