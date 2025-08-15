@@ -210,6 +210,47 @@ startxref
     `;
   }
 
+  async generatePDFBuffer(request: PDFGenerationRequest): Promise<Buffer> {
+    logger.info({ contractor: request.contractorName }, 'Generating PDF buffer directly');
+    
+    try {
+      // Try Puppeteer first, fallback to simple PDF if Chrome issues
+      try {
+        const browser = await puppeteer.launch({
+          args: ['--no-sandbox', '--disable-setuid-sandbox'],
+          headless: true,
+          timeout: 30000
+        });
+
+        try {
+          const page = await browser.newPage();
+          const htmlContent = this.createHTMLReport(request);
+          
+          await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+          
+          const pdfArrayBuffer = await page.pdf({
+            format: 'A4',
+            margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' },
+            printBackground: true,
+            preferCSSPageSize: true
+          });
+          
+          logger.info({ contractor: request.contractorName }, 'PDF generated with Puppeteer');
+          return Buffer.from(pdfArrayBuffer);
+
+        } finally {
+          await browser.close();
+        }
+      } catch (puppeteerError) {
+        logger.warn({ error: (puppeteerError as Error).message }, 'Puppeteer failed, using fallback PDF');
+        return this.createFallbackPDF(request);
+      }
+    } catch (error) {
+      logger.error({ error: (error as Error).message }, 'PDF buffer generation failed');
+      throw new Error(`PDF generation failed: ${(error as Error).message}`);
+    }
+  }
+
   async generateRiskReport(request: PDFGenerationRequest): Promise<string> {
     const startTime = Date.now();
     logger.info({ contractor: request.contractorName }, 'Starting PDF generation');

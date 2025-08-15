@@ -41,6 +41,7 @@ interface RiskCheckModalProps {
 
 export function RiskCheckModal({ isOpen, onClose, country, onSuccess }: RiskCheckModalProps) {
   const [assessment, setAssessment] = useState<any>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
   const riskCheckMutation = useRiskAssessment();
 
   const form = useForm<RiskCheckRequest>({
@@ -77,6 +78,38 @@ export function RiskCheckModal({ isOpen, onClose, country, onSuccess }: RiskChec
     setAssessment(null);
     form.reset();
     onClose();
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!assessment?.id) return;
+    
+    setIsDownloading(true);
+    try {
+      // Use direct PDF download endpoint
+      const response = await fetch(`/api/pdf-download/${assessment.id}`);
+      
+      if (!response.ok) throw new Error('Failed to generate PDF');
+      
+      // Get the PDF blob
+      const blob = await response.blob();
+      
+      // Create download link and trigger download
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Risk_Assessment_${assessment.contractorId || assessment.id}.pdf`;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+    } catch (error) {
+      console.error('PDF download failed:', error);
+      alert('Failed to download PDF. Please try again.');
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   if (assessment) {
@@ -154,8 +187,8 @@ export function RiskCheckModal({ isOpen, onClose, country, onSuccess }: RiskChec
                 <Button variant="outline" onClick={handleClose}>
                   Close
                 </Button>
-                <Button onClick={() => onSuccess?.((assessment as any).contractorId || (assessment as any).id || 'unknown')}>
-                  Generate PDF Report
+                <Button onClick={handleDownloadPDF} disabled={isDownloading}>
+                  {isDownloading ? 'Generating PDF...' : 'Download PDF Report'}
                 </Button>
               </div>
             </div>

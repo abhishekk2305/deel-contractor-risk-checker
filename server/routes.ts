@@ -940,5 +940,71 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // Direct PDF download endpoint
+  app.get('/api/pdf-download/:assessmentId', async (req, res) => {
+    try {
+      const { assessmentId } = req.params;
+      
+      // Get the risk score from database (since assessment ID now refers to risk score ID)
+      const [riskScore] = await db
+        .select()
+        .from(riskScores)
+        .where(eq(riskScores.id, assessmentId))
+        .limit(1);
+
+      if (!riskScore) {
+        return res.status(404).json({ error: 'Risk assessment not found' });
+      }
+
+      // Get the contractor information
+      const [contractor] = await db
+        .select()
+        .from(contractors)
+        .where(eq(contractors.id, riskScore.contractorId))
+        .limit(1);
+
+      if (!contractor) {
+        return res.status(404).json({ error: 'Contractor not found' });
+      }
+
+      // Get the country information
+      const [country] = await db
+        .select()
+        .from(countries)
+        .where(eq(countries.id, contractor.countryId))
+        .limit(1);
+
+      const pdfService = new PDFService();
+      
+      // Generate PDF directly and return it
+      const pdfBuffer = await pdfService.generatePDFBuffer({
+        contractorName: contractor.name,
+        countryName: country?.name || 'Unknown',
+        riskAssessment: {
+          id: riskScore.id,
+          contractorId: contractor.id,
+          overallScore: riskScore.score,
+          riskTier: riskScore.tier,
+          topRisks: riskScore.topRisks,
+          recommendations: riskScore.recommendations,
+          breakdown: riskScore.breakdown
+        },
+        template: 'standard'
+      });
+
+      // Set headers for PDF download
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="Risk_Assessment_${contractor.name.replace(/\s+/g, '_')}.pdf"`,
+        'Content-Length': pdfBuffer.length.toString(),
+      });
+
+      res.send(pdfBuffer);
+    } catch (error) {
+      logger.error({ error: (error as Error).message }, 'Direct PDF download failed');
+      res.status(500).json({ error: 'Failed to generate PDF' });
+    }
+  });
+
   return httpServer;
 }
