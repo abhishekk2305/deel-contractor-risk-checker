@@ -28,12 +28,12 @@ This project enables instant, auditable risk assessments of contractors worldwid
 - **Product Requirements (PRD):** [docs/PRD.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/PRD.md)
 - **Functional Spec (FSD):** [docs/FSD.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/FSD.md)
 - **Technical Spec (TSD):** [docs/TSD.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/TSD.md)
-- **Wireframes/UI/UX:** [docs/High-Fidelity-Wireframes-and-Clickable-Mockups.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/High-Fidelity-Wireframes-and-Clickable-Mockups.md)
-- **Analytics Plan:** [docs/Analytics-Metrics.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/Analytics-Metrics.md)
-- **User Stories & Acceptance Criteria:** [docs/User-Stories-Acceptance-Criteria.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/User-Stories-Acceptance-Criteria.md)
-- **Delivery Roadmap:** [docs/Roadmap-and-Sprints.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/Roadmap-and-Sprints.md)
-- **Risk Register:** [docs/Risk-Register.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/Risk-Register.md)
-- **UI/UX Guide:** [docs/UI-UX-Design-Document.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/UI-UX-Design-Document.md)
+- **Wireframes/UI/UX:** [docs/High-Fidelity%20Wireframes%20and%20Clickable%20Mockups.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/High-Fidelity%20Wireframes%20and%20Clickable%20Mockups.md)
+- **Analytics Plan:** [docs/Analytics%20%26%20Metrics.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/Analytics%20%26%20Metrics.md)
+- **User Stories & Acceptance Criteria:** [docs/User%20Stories%20%26%20Acceptance%20Criteria.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/User%20Stories%20%26%20Acceptance%20Criteria.md)
+- **Delivery Roadmap:** [docs/Roadmap%20and%20Sprints.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/Roadmap%20and%20Sprints.md)
+- **Risk Register:** [docs/Risk%20Register.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/Risk%20Register.md)
+- **UI/UX Guide:** [docs/UI%3AUX%20Design%20Document.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/UI%3AUX%20Design%20Document.md)
 - **License:** [docs/License.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/License.md)
 
 ***
@@ -55,4 +55,4 @@ Curious to learn what Deel’s founders, product, or compliance teams would add,
 
 *(Last updated: August 2025)*
 
----
+***
