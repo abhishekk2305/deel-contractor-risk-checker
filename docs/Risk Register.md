@@ -99,6 +99,10 @@ Owner: PM
 
 Monitoring and review
 
+Workflow Handoffs:
+
+This tool is designed to supplement, not replace, existing compliance and onboarding processes. See Risk Register for details on GDPR/PII, data retention, and audit logs. The License.md will be amended to state “This is for informational purposes and not official legal advice.” Integration with client workflows includes PDF exports for audits and document collection.
+
 Weekly risk review during Phase 1–2; monthly thereafter
 
 Risk burndown chart linked to acceptance gates
