@@ -81,17 +81,35 @@ export function RiskCheckModal({ isOpen, onClose, country, onSuccess }: RiskChec
   };
 
   const handleDownloadPDF = async () => {
-    if (!assessment?.id) return;
+    if (!assessment?.id) {
+      alert('No assessment data available for PDF generation.');
+      return;
+    }
     
     setIsDownloading(true);
+    console.log('Starting PDF download for assessment ID:', assessment.id);
+    
     try {
-      // Use direct PDF download endpoint
-      const response = await fetch(`/api/pdf-download/${assessment.id}`);
+      // Use direct PDF download endpoint - this is working in the backend
+      const downloadUrl = `/api/pdf-download/${assessment.id}`;
+      console.log('Downloading PDF from:', downloadUrl);
       
-      if (!response.ok) throw new Error('Failed to generate PDF');
+      const response = await fetch(downloadUrl);
+      console.log('PDF response status:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('PDF download failed:', errorText);
+        throw new Error(`Failed to generate PDF: ${response.status} ${response.statusText}`);
+      }
       
       // Get the PDF blob
       const blob = await response.blob();
+      console.log('PDF blob size:', blob.size, 'bytes, type:', blob.type);
+      
+      if (blob.size === 0) {
+        throw new Error('Received empty PDF file');
+      }
       
       // Create download link and trigger download
       const url = window.URL.createObjectURL(blob);
@@ -100,13 +118,19 @@ export function RiskCheckModal({ isOpen, onClose, country, onSuccess }: RiskChec
       link.download = `Risk_Assessment_${assessment.contractorId || assessment.id}.pdf`;
       link.style.display = 'none';
       document.body.appendChild(link);
+      
+      console.log('Triggering PDF download...');
       link.click();
+      
+      // Cleanup
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
       
+      console.log('PDF download completed successfully');
+      
     } catch (error) {
       console.error('PDF download failed:', error);
-      alert('Failed to download PDF. Please try again.');
+      alert(`Failed to download PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsDownloading(false);
     }
