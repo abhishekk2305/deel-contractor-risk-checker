@@ -16,7 +16,11 @@ export const useAnalytics = (from?: string, to?: string) => {
 export const useComplianceRules = (countryIso?: string, status?: string) => {
   return useQuery({
     queryKey: ["/api/admin/rules", countryIso, status],
-    queryFn: () => api.getComplianceRules(countryIso, status),
+    queryFn: async () => {
+      const response = await fetch('/api/admin/compliance-rules');
+      if (!response.ok) throw new Error('Failed to fetch compliance rules');
+      return response.json();
+    },
     staleTime: 1 * 60 * 1000, // 1 minute
   });
 };

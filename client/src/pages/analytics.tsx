@@ -117,7 +117,7 @@ export default function Analytics() {
                     ))}
                   </div>
                 ) : analyticsData?.recentActivity ? (
-                  analyticsData.recentActivity.map((activity) => (
+                  analyticsData.recentActivity.map((activity: any) => (
                     <div key={activity.id} className="flex items-start space-x-3">
                       <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
                         activity.type === 'search' ? 'bg-blue-100' :

@@ -230,7 +230,7 @@ export default function AdminPage() {
                   </Alert>
                 ) : (
                   <div className="space-y-4">
-                    {rules.map((rule) => (
+                    {rules.map((rule: any) => (
                       <Card key={rule.id} className="border">
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between mb-2">
@@ -353,7 +353,7 @@ export default function AdminPage() {
                         <div key={key} className="flex items-center justify-between p-3 border rounded">
                           <span className="font-medium capitalize">{key}</span>
                           <div className="flex items-center gap-2">
-                            <Badge variant="outline">{value}</Badge>
+                            <Badge variant="outline">{String(value)}</Badge>
                             {systemStatus.provider_urls?.[key] && systemStatus.provider_urls[key] !== 'mock' && (
                               <Badge variant="secondary" className="text-xs">
                                 {systemStatus.provider_urls[key].includes('://') 
