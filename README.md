@@ -58,7 +58,9 @@ Curious to learn what Deel’s founders, product, or compliance teams would add,
 
 ***
 
-"This is a proof-of-concept hosted on Replit for ease of demonstration; in production, this would be deployed to Deel’s preferred cloud infra."
+“This prototype is hosted on Replit for quick, zero-friction demo access. In a real production setting, I’d work with the engineering team to deploy it to Deel’s secure infrastructure and integrate with existing APIs.”
+
+***
 
 *(Last updated: August 2025)*
 
