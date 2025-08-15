@@ -78,24 +78,8 @@ Turn compliance from **reactive firefighting** into a **competitive differentiat
   * Benefit entitlements & tax compliance
 * Uses **jurisdiction-specific rule sets** (updated in real-time)
 
-#### **5.3. Instant Resolution Workflow**
 
-* **One-Click Fixes** for:
-
-  * Contract reclassification
-  * Benefit package updates
-  * Payroll correction
-* Auto-escalation to Deel’s **Legal & Compliance team** if manual review is required
-
-#### **5.4. Proactive Alerts**
-
-* Email, Slack, and in-platform alerts for:
-
-  * Upcoming compliance deadlines
-  * Contract anomalies detected pre-signature
-  * Pending government filings
-
-#### **5.5. Integration with Existing Deel Modules**
+#### **5.3. Integration with Existing Deel Modules**
 
 * **EOR**: Flag worker classification risks before onboarding
 * **Contractor Management**: Auto-scan agreements for country-specific gaps
@@ -104,7 +88,7 @@ Turn compliance from **reactive firefighting** into a **competitive differentiat
 
 ---
 
-### **6. Success Metrics**
+### **5.4. Success Metrics**
 
 * **<5 min** average risk detection-to-alert time
 * **50% reduction** in customer-initiated compliance tickets in first 6 months
@@ -114,7 +98,7 @@ Turn compliance from **reactive firefighting** into a **competitive differentiat
 
 ---
 
-### **7. Rollout Plan**
+### **5.5. Rollout Plan**
 
 **Phase 1 (3 months)** — Internal Risk Detection MVP
 
