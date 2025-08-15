@@ -37,7 +37,7 @@ This project enables instant, auditable risk assessments of contractors worldwid
 
 | Home | Risk Result | PDF Export |
 |------|-------------|------------|
-| ![Home](docs/home.png) | ![Risk Result](docs/Risk Result.png) | ![PDF Export](docs/pdf export.png) |
+| ![Home](docs/Home.png) | ![Risk Result](docs/Risk result.png.png) | ![PDF Export](docs/PDF Export.png) |
 
 ---
 
