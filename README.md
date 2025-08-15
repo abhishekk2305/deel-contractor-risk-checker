@@ -1,9 +1,8 @@
 # 🌍 Global Contractor Risk Checker (GCRC) — Product & Documentation Hub
 
 **Author:** Abhishek Dhama  
-**Contact:** abhishekdhama18@gmail.com  
+**Contact:** abhishekkdhama@gmail.com  
 **Live Demo:** [https://stock-sage-abhishekdhama18.replit.app/](https://stock-sage-abhishekdhama18.replit.app/)  
-📄 [Example PDF Output](docs/sample-risk-report.pdf)
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-93%25-blue)
 ![Last Updated](https://img.shields.io/badge/Updated-August%202025-brightgreen)
