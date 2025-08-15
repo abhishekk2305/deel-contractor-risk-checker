@@ -1,0 +1,54 @@
+Fix PDF Download—Detailed Debugging and Completion Prompt
+
+You must fully resolve the critical bug where PDF reports do not download after the user clicks “Generate PDF” on a risk assessment, even though the UI says “your PDF is ready.” The fix must be tested and proven in the live preview accessible by the user.
+
+Follow these steps and provide proof for each:
+
+Backend Investigation
+
+Check that POST /api/pdf-report is called when the user clicks “Generate PDF” and that it returns a 202 response with { job_id }.
+
+Confirm that the background job actually completes:
+
+Poll GET /api/pdf-report/:job_id until you get a response with a working URL and file size in { url, size_bytes }.
+
+S3/Storage
+
+Verify that the PDF file is actually being generated and stored.
+
+Check S3 (or your storage) to confirm the file appears with the filename and time that match the request.
+
+Ensure that the returned URL is a real, accessible, pre-signed link.
+
+Frontend Behavior
+
+The client must poll the job endpoint and, when ready, activate the download link and/or auto-open the PDF in a new browser tab.
+
+If the file is ready, clicking “Download PDF” (or auto-triggered) must initiate the browser download dialog and save a file.
+
+UI Feedback
+
+Show progress/loading if the job is running; when the PDF is ready, display an explicit "Download your PDF" link or trigger.
+
+If errors occur (job fails, URL missing), show a user-visible error—not just a silent fail.
+
+Proof Required
+
+Post screenshots or a brief GIF from the live preview showing:
+
+(a) Risk assessment completion
+
+(b) “Generate PDF” clicked
+
+(c) Visual confirmation that PDF appears/downloads in the browser
+
+(d) The actual PDF opened and readable
+
+(e) The corresponding S3 or backend log showing file creation and serving
+
+Also, paste the actual JSON returned from both the job trigger and final poll endpoints.
+
+Do NOT report the issue as fixed unless all the above steps are verified in my preview.
+If you encounter errors at any step, paste the full stack trace, error message, or failed API response so we can diagnose together.
+
+I expect to see (1) the end-to-end PDF flow working from my preview, and (2) evidence that a valid PDF is being generated and downloaded reliably. Only then should this issue be marked as resolved.
