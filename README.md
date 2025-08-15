@@ -105,8 +105,8 @@ For full production readiness:
 ## 💬 Let’s Talk
 
 Curious to learn what Deel’s founders, product, or compliance teams would add, improve, or prioritize.  
-📧 **Email:** abhishekdhama18@gmail.com  
-📅 [**Book a 15-min chat**](https://calendly.com/your-link)
+📧 **Email:** abhishekkdhama@gmail.com  
+
 
 ---
 
