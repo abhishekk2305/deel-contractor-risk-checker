@@ -2,8 +2,8 @@
 
 **Project Name:** Global Contractor Risk Checker
 **Version:** 1.0
-**Prepared By:** \[Your Name]
-**Date:** \[Insert Date]
+**Prepared By:** \[Abhishek Dhama]
+**Date:** \[14/08/2025]
 
 ---
 
