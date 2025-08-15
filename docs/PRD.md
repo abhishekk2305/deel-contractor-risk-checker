@@ -1,6 +1,6 @@
 ## **Product Requirements Document (PRD)**
 
-### **Product Name:** Deel Zero-Delta Compliance™
+### **Product Name:** Global Contractor Risk Checker
 
 *Proactively detect, prevent, and resolve hiring, payroll, and compliance risks before they cause financial or legal exposure.*
 
