@@ -65,16 +65,22 @@ export function PdfModal({ isOpen, onClose, riskAssessmentId }: PdfModalProps) {
           )}
 
           <div className="flex space-x-3 pt-2">
-            <Button
-              onClick={() => {
-                // Trigger PDF generation logic
-                onClose();
-              }}
-              className="flex-1"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Generate PDF
-            </Button>
+            {riskAssessmentId ? (
+              <a 
+                href={`/api/pdf-download/${riskAssessmentId}`}
+                download={`Risk_Assessment_${riskAssessmentId}.pdf`}
+                className="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 h-10 py-2 px-4"
+                onClick={onClose}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download PDF Report
+              </a>
+            ) : (
+              <Button disabled className="flex-1">
+                <Download className="w-4 h-4 mr-2" />
+                No Assessment Available
+              </Button>
+            )}
             <Button variant="outline" onClick={onClose}>
               Cancel
             </Button>

@@ -445,23 +445,14 @@ export default function SearchPage() {
                       </div>
 
                       <div className="flex space-x-3">
-                        <Button 
-                          onClick={handleGeneratePDF}
-                          disabled={pdfMutation.isPending}
-                          className="flex-1"
+                        <a 
+                          href={`/api/pdf-download/${riskResult.id}`}
+                          download={`Risk_Assessment_${contractorName.replace(/\s+/g, '_')}.pdf`}
+                          className="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 h-10 py-2 px-4"
                         >
-                          {pdfMutation.isPending ? (
-                            <>
-                              <Clock className="w-4 h-4 mr-2 animate-spin" />
-                              Generating...
-                            </>
-                          ) : (
-                            <>
-                              <Download className="w-4 h-4 mr-2" />
-                              Generate PDF
-                            </>
-                          )}
-                        </Button>
+                          <Download className="w-4 h-4 mr-2" />
+                          Download PDF Report
+                        </a>
                         
                         <Button 
                           variant="outline"

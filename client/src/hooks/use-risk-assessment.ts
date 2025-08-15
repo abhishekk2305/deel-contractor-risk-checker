@@ -46,31 +46,35 @@ export const usePdfGeneration = () => {
   
   return useMutation({
     mutationFn: async (riskAssessmentId: string) => {
-      const response = await fetch(`/api/pdf-report`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ riskAssessmentId }),
-      });
+      // Use direct download instead of job-based system
+      const downloadUrl = `/api/pdf-download/${riskAssessmentId}`;
       
+      // Test that the PDF exists
+      const response = await fetch(downloadUrl, { method: 'HEAD' });
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to generate PDF');
+        throw new Error('PDF not available for this assessment');
       }
       
-      const data = await response.json();
-      return { jobId: data.job_id };
+      // Trigger immediate download
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `Risk_Assessment_${riskAssessmentId}.pdf`;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      return { success: true, downloadUrl };
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast({
-        title: "PDF Generation Started",
-        description: "Your report is being generated. You'll be notified when it's ready.",
+        title: "PDF Downloaded",
+        description: "Your risk assessment report has been downloaded successfully.",
       });
     },
     onError: (error) => {
       toast({
-        title: "PDF Generation Failed",
+        title: "PDF Download Failed",
         description: error.message,
         variant: "destructive",
       });
