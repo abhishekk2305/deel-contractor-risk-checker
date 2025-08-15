@@ -7,53 +7,55 @@
 
 ***
 
-## 🚀 **What Is This?**
+## 🚀 What Is This?
 
 A working SaaS prototype and complete product documentation suite for a **global contractor risk and compliance engine**—tailored for Deel’s core markets.  
 This project enables instant, auditable risk assessments of contractors worldwide and streamlines compliance for hiring at scale.
 
 ***
 
-## 👀 **Quick Demo Actions**  
-- Search any country → run a contractor risk assessment → get live scoring, risk factors, and recommendations
-- Download an instant, branded PDF report for any risk assessment
+## 👀 Quick Demo Actions
+
+- Search any country → run a contractor risk assessment → get live scoring, risk factors, and recommendations  
+- Download an instant, branded PDF report for any risk assessment  
 - Access admin (rules, analytics, settings) for compliance ops view
 
 ***
 
-## 📁 **Key Artifacts**
+## 📁 Key Artifacts
 
-- **Live App:** [stock-sage-abhishekdhama18.replit.app](https://stock-sage-abhishekdhama18.replit.app/)
-- **PRD:** [Product Requirements](./PRD.md)
-- **FSD:** [Functional Spec](./FSD.md)
-- **Technical Spec:** [TSD](./TSD.md)
-- **Wireframes/UI/UX:** [Screens & Clickable Mockups](./High-Fidelity-Wireframes-and-Clickable-Mockups.md)
-- **Analytics Plan:** [Metrics & Observability](./Analytics-Metrics.md)
-- **User Stories:** [Acceptance Criteria](./User-Stories-Acceptance-Criteria.md)
-- **Delivery Roadmap:** [Sprints, Releases, Ownership](./Roadmap-and-Sprints.md)
-- **Risk Register:** [Product & Delivery Risks](./Risk-Register.md)
-- **UI/UX Guide:** [Design & Accessibility](./UI-UX-Design-Document.md)
-- **License:** [MIT License](./License.md)
-
-*(Replace `./filename.md` with your actual hosted paths if using Google Drive, Notion, or elsewhere)*
+- **Live App:** [https://stock-sage-abhishekdhama18.replit.app/](https://stock-sage-abhishekdhama18.replit.app/)
+- **Product Requirements (PRD):** [docs/PRD.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/PRD.md)
+- **Functional Spec (FSD):** [docs/FSD.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/FSD.md)
+- **Technical Spec (TSD):** [docs/TSD.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/TSD.md)
+- **Wireframes/UI/UX:** [docs/High-Fidelity%20Wireframes%20and%20Clickable%20Mockups.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/High-Fidelity%20Wireframes%20and%20Clickable%20Mockups.md)
+- **Analytics Plan:** [docs/Analytics%20%26%20Metrics.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/Analytics%20%26%20Metrics.md)
+- **User Stories & Acceptance Criteria:** [docs/User%20Stories%20%26%20Acceptance%20Criteria.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/User%20Stories%20%26%20Acceptance%20Criteria.md)
+- **Delivery Roadmap:** [docs/Roadmap%20and%20Sprints.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/Roadmap%20and%20Sprints.md)
+- **Risk Register:** [docs/Risk%20Register.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/Risk%20Register.md)
+- **UI/UX Guide:** [docs/UI%3AUX%20Design%20Document.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/UI%3AUX%20Design%20Document.md)
+- **License:** [docs/License.md](https://github.com/abhishekk2305/deel-contractor-risk-checker/blob/main/docs/License.md)
 
 ***
 
-## 🏆 **Why Share This?**
+## 🏆 Why Share This?
 
-- Demonstrates ability to conceptualize, build, and deliver a globally-relevant SaaS product—solo, end-to-end.
+- Demonstrates the ability to conceptualize, build, and deliver a globally-relevant SaaS product—solo, end-to-end.
 - Shows PM leadership in vision, prioritization, risk management, analytics, and documentation.
 - Ready for founder/exec review, feedback, and MVP pilot discussions.
 
 ***
 
-## 💬 **Let’s Talk**
+## 💬 Let’s Talk
 
 Curious to learn what Deel’s founders, product, or compliance teams would add, improve, or prioritize further.  
-**Open to feedback, discussion, or interview conversations.**
+**Open to feedback, discussion, and interview conversations.**
 
 ***
 
 *(Last updated: August 2025)*
 
----
+***
+
+**Tip:** If you ever rename or move files, update the link accordingly—GitHub is case and character sensitive!  
+Let me know if you need help batch-renaming files for even easier links.
