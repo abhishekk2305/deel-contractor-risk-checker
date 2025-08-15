@@ -34,13 +34,7 @@ Bulk risk checks via CSV (API-first in Phase 2)
 
 User Roles and Permissions
 
-Customer HR Manager: Run risk checks, view/download reports
-
-Customer Compliance Officer: Same as HR + manage notification subscriptions
-
-Deel Admin: Manage compliance rules, view analytics, audit trails
-
-Read-only Stakeholder: View results and PDFs only
+Basic public access with admin panel - no role-based authentication system in Demo for now
 
 Functional Modules
 A) Risk Check
