@@ -58,6 +58,8 @@ Curious to learn what Deel’s founders, product, or compliance teams would add,
 
 ***
 
+"This is a proof-of-concept hosted on Replit for ease of demonstration; in production, this would be deployed to Deel’s preferred cloud infra."
+
 *(Last updated: August 2025)*
 
 ***
