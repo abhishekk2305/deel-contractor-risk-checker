@@ -13,15 +13,11 @@ Provide operational observability for engineering
 
 Event taxonomy (client and server)
 
-search_submit: {query, filters, user_role}
-
 filter_change: {filter_name, from, to}
 
 country_view: {country, from_search: bool}
 
 risk_check_request: {country, contractor_type, payment_method}
-
-risk_check_success: {score, tier, partial_sources: [list]}
 
 risk_check_error: {error_code, source}
 
