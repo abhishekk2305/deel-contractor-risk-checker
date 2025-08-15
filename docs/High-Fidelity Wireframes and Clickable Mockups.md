@@ -1,7 +1,7 @@
 Title: High-Fidelity Wireframes and Clickable Mockups
 Product: Global Contractor Risk Checker (Deel)
-Owner: [Your Name]
-Date: [Insert Date]
+Owner: [Abhishek Dhama]
+Date: [14/08/2025]
 Version: 1.0
 
 Purpose and scope
