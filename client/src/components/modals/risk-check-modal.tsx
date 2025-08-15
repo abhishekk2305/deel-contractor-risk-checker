@@ -30,6 +30,7 @@ import { useRiskAssessment } from "@/hooks/use-risk-assessment";
 import { RiskCheckRequest, riskCheckRequestSchema } from "@shared/schema";
 import { Country } from "@/types";
 import { PartialSourceWarning } from "@/components/shared/error-banner";
+import { ScoringInfoButton } from "@/components/modals/scoring-info-modal";
 
 interface RiskCheckModalProps {
   isOpen: boolean;
@@ -147,13 +148,16 @@ export function RiskCheckModal({ isOpen, onClose, country, onSuccess }: RiskChec
               </ul>
             </div>
 
-            <div className="flex justify-end space-x-3">
-              <Button variant="outline" onClick={handleClose}>
-                Close
-              </Button>
-              <Button onClick={() => onSuccess?.((assessment as any).contractorId || (assessment as any).id || 'unknown')}>
-                Generate PDF Report
-              </Button>
+            <div className="flex justify-between items-center">
+              <ScoringInfoButton />
+              <div className="flex space-x-3">
+                <Button variant="outline" onClick={handleClose}>
+                  Close
+                </Button>
+                <Button onClick={() => onSuccess?.((assessment as any).contractorId || (assessment as any).id || 'unknown')}>
+                  Generate PDF Report
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
