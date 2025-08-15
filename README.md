@@ -38,6 +38,11 @@ This project enables instant, auditable risk assessments of contractors worldwid
 
 ***
 
+## Known Gaps
+Manual QA is tracked in verification_artifacts.md. For full production, I would implement automated tests (unit/integration) around the scoring engine and primary endpoints using Jest and/or Python unittest. Adding a /tests directory and basic test cases is prioritized for future sprints.
+
+***
+
 ## 🏆 Why Share This?
 
 - Demonstrates the ability to conceptualize, build, and deliver a globally-relevant SaaS product—solo, end-to-end.
