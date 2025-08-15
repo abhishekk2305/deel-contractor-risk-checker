@@ -27,12 +27,12 @@ Enables instant, auditable risk assessments of contractors worldwide and streaml
 - **Product Requirements (PRD):** [docs/PRD.md](docs/PRD.md)
 - **Functional Spec (FSD):** [docs/FSD.md](docs/FSD.md)
 - **Technical Spec (TSD):** [docs/TSD.md](docs/TSD.md)
-- **Wireframes/UI/UX:** [docs/High-Fidelity-Wireframes-and-Clickable-Mockups.md](docs/High-Fidelity-Wireframes-and-Clickable-Mockups.md)
-- **Analytics Plan:** [docs/Analytics-Metrics.md](docs/Analytics-Metrics.md)
-- **User Stories & Acceptance Criteria:** [docs/User-Stories-Acceptance-Criteria.md](docs/User-Stories-Acceptance-Criteria.md)
-- **Delivery Roadmap:** [docs/Roadmap-and-Sprints.md](docs/Roadmap-and-Sprints.md)
-- **Risk Register:** [docs/Risk-Register.md](docs/Risk-Register.md)
-- **UI/UX Guide:** [docs/UI-UX-Design-Document.md](docs/UI-UX-Design-Document.md)
+- **Wireframes/UI/UX:** [docs/High Fidelity Wireframes and Clickable Mockups.md](docs/High Fidelity Wireframes and Clickable Mockups.md)
+- **Analytics Plan:** [docs/Analytics Metrics.md](docs/Analytics Metrics.md)
+- **User Stories & Acceptance Criteria:** [docs/User Stories Acceptance Criteria.md](docs/User Stories Acceptance Criteria.md)
+- **Delivery Roadmap:** [docs/Roadmap and Sprints.md](docs/Roadmap and Sprints.md)
+- **Risk Register:** [docs/Risk Register.md](docs/Risk Register.md)
+- **UI/UX Guide:** [docs/UI UX Design Document.md](docs/UI UX Design Document.md)
 - **License:** [docs/License.md](docs/License.md)
 
 ***
