@@ -19,7 +19,7 @@ The TSD describes the **technical implementation** of the Global Contractor Risk
 
 1. **Frontend (Client Layer)**
 
-   * Framework: Next.js (React)
+   * Framework: Express.js with React
    * Responsive design: Tailwind CSS
    * Components: Search, country detail, risk scoring dashboard, PDF export
 
@@ -35,7 +35,7 @@ The TSD describes the **technical implementation** of the Global Contractor Risk
 
 3. **AI/Rule Engine Layer**
 
-   * Language: Python (FastAPI for service)
+   * Language: Node.js/Express
    * Functions:
 
      * Sanctions & PEP screening
@@ -46,7 +46,7 @@ The TSD describes the **technical implementation** of the Global Contractor Risk
 4. **Database Layer**
 
    * PostgreSQL for structured compliance data
-   * MongoDB for unstructured data (media, reports)
+   * PostgreSQL for unstructured data (media, reports)
    * Version control tables for compliance rules
 
 5. **Integration Layer**
