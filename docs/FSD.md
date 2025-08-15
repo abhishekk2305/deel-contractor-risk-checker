@@ -19,7 +19,8 @@ Risk scoring using external sources and Deel internal history
 
 PDF report generation (Deel-branded)
 
-Admin CMS for rules with version history
+Admin CMS for rules with version history:
+ Risk/compliance rules originate from public sources (e.g., OpenSanctions, government/jurisdictional summaries) and internal legal review. Each rule in the Admin CMS includes a source_url and effective_from field. Rules are versioned, with a full audit trail and diffs for transparency. Weekly/monthly reviews ensure they remain policy-backed and auditable.
 
 Analytics dashboard (searches, PDF downloads, conversions)
 
