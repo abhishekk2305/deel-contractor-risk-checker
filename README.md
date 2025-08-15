@@ -59,7 +59,7 @@ This project enables instant, auditable risk assessments of contractors worldwid
 
 ## 🛠 Architecture
 
-![Architecture Diagram](docs/architecture.png)
+![Architecture Diagram](docs/architecture-diagram.png)
 
 **Flow:** Browser → API → Rules Engine → Database → PDF Service  
 - **Frontend:** TypeScript + React + Tailwind (Vite)  
